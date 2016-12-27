@@ -1,0 +1,271 @@
+Automated Recommendation Systems
+Collaborative Filtering Through Reinforcement Learning
+Mostafa Afkhamizadeh
+Department of MS&E, Stanford University Email: mafkhami@stanford.edu
+
+Alexei Avakov
+Department of Electrical Engineering, Stanford University Email: linrav@stanford.edu
+
+Reza Takapoui
+Department of Electrical Engineering, Stanford University Email: takapoui@stanford.edu
+
+Abstract--Within this work we explore the topic of large scale, automated recommendation systems. We focus on collaborative filtering approaches, wherein a system suggests new products to users based on their viewing history as well as other known demographics. There are several approaches to this in current literature, the simplest of which treat it as a matrix completion problem. We explore the setting from a reinforcement learning perspective by applying traditional algorithms for reinforcement learning to the problem.
+
+I. P ROBLEM F ORMULATION Numerous online services such as Netflix, Amazon, Yelp, Pandora, online advertisings, etc. provide automated recommendations to help users to navigate through a large collection of items. Every time a user queries the system for a new item, a suggestion is made on the basis of the user's past history and (when available) their demographic profile. Two typical ways of producing these recommendations are collaborative filtering and content-based filtering. There are two simultaneous goals to be satisfied: helping the user to explore the available items and probing the user's preferences. One of the models that captures this setting well is the multiarm bandit, an important model for decision making under uncertainty. In this model a set of arms with unknown reward profiles is given and, at each time slot, the decision maker must choose an arm to maximize his expected reward. Clearly, the decision at each time slot should depend on previous observations. Thus, there is a trade-off between exploration, trying arms with more uncertain reward in order to gather more information, and exploitation, pulling arms with relatively high reward expectations. For our purposes the arms have a very specific structure and this setting has previously been referred to as the "linearbandits" model (see [3]). Here, it is assumed that the underlying matrix of preferences (which contains the rating user i gives to item j at entry (i, j)) has a low-rank structure. Hence, ratings made by user i to item j can be approximated by a scaler product of two feature vectors ai , bj  Rp , characterizing user and item respectively. In other words our observations, rij can be viewed as rij = aT bj i + zij
+
+must estimate them over time. However, some works (like [1]) make a simplifying assumption that the item feature vectors are known. We explore both settings, but find more meaningful results in the case where the item feature vectors are known. In this case, the item feature vectors can be either constructed explicitly, or derived from users' feedback using matrix factorization methods. With the item latent vectors in hand, we can treat each user independently and throughout the explore-exploit trade-off, we can try to estimate and exploit the users latent vectors. These feature vectors can depend on users' demographic information and their past behavior in rating items. The goal of our system is to develop a recommendation policy, which suggests items to users. This policy will, at each time slot, output a recommendation based on the previous observations. This policy must properly adjust for the exploreexploit trade-off, and classically there are two types of policies, which differ in the way they perform exploration: optimistic policies, e.g. upper confidence bound (UCB), and probabilistic policies, e.g. posterior sampling. UCB algorithms have been applied to this problem in the past, but posterior sampling is less common. Posterior sampling (also known as Thompson sampling) was introduced in 1933 and offers significant advantages over UCB methods (as shown in [2]), however until recently it has not been very popular or feasible. Our primary objective is to explore the feasibility of collaborative filtering through posterior sampling. We analyze its performance on real world data, specifically the freely available MovieLens datasets, and compare it to existing methods such as UCB and the work done in [1] II. S YSTEM M ODELS AND A LGORITHMS In this section we will introduce some notation used throughout the rest of this work, as well as the algorithms that we seek to implement. A. Notation We have a set of users, i = 1, 2, . . . , m, with corresponding feature vectors ai  Rp ; and items, j = 1, 2, . . . , n, with corresponding feature vectors bj  Rp . We refer to these feature vectors collectively as A  Rp×m and B  Rp×n , thus the "true" ratings can be captured in the matrix AT B. At each time t  Z+ , a user i(t) will enter the system and
+
+where zij represents the unexplained factors. In the general setting, both the user and item feature vectors are treated as unknown, and our recommendation algorithms
+
+be recommended an item j (t) , after which they will give it a rating r(t) according to r(t) = aT(t) bj (t) + z (t) i Where z (t) captures the unexplainable deviation of the observation from our model. We refer to the viewing history at time t-1 t as the sequence H(t) = i( ) , j ( ) , r( )  =1 , i.e. all the viewings in the system before time t. Thus on a high-level, at time t our program seeks to use its knowledge of user ai(t) to make the best possible recommendation. The job of a recommendation system is to define a function µH (·), which given a user will output a recommendation for that user. Unknown to the system, there is some optimal policy (t) which at each time t would output recommendation j . To measure the performance of our system, we will compare the system's recommendations to the best recommendation. Specifically define the regret of the system, at time t, to be
+t
+
+To implement this algorithm all that remains is to choose a prior on the model parameters, and compute their posterior distribution given a viewing history. As in [3], and other prior literature, we assume ai , bj  N (0, Ip /p) i.i.d.. Furthermore we assume that unexplained deviations of the observations are 2 Gaussian, i.e. z (t)  N (0, z ). Now we are ready to compute the posterior distribution. Using Bayes' rule observe (for compactness we use f (·) to denote the distribution of the argument): f A, B H(t) = =
+A,B
+
+f H(t) A, B f (A) f (B) f H(t) f (A)f (B) f (A)f (B)
+t-1  =1 f t-1  =1 f
+
+z ( ) z ( ) dAdB
+
+R(t) =
+ =1
+
+aT( ) bj ( ) - E r( ) i
+
+
+That is, at each time-step we increase our regret by how far the expected rating of our recommendation differs from the best possible rating. Ultimately we seek to derive a policy which achieves minimal regret. B. Posterior Sampling Algorithm 1 Posterior Sampling Start with prior distribution on (A, B), f (A, B) for t = 1, 2, . . . do observe arrival of user i(t) ^ ^ sample A, B  f (A, B|H(t) ) compute and output recommendation j (t) where j (t) = arg max E aT ^j ^i b
+j
+
+In the above z ( ) = r( ) - aT( ) bj ( ) , and the integral of the i denominator is over the entire space of Rp×m × Rp×n . For the rest of this report, we consider the simpler case where the vectors bj are given and we treat each user independently. This problem is extensively studied in literature, but as far as we can tell has never been solved or analyzed through posterior sampling. We explore it more concretely below. For compactness we will consider only the feature vector of a single user, a  Rp , a priori we assume it comes from N (0, Ip /p) as above, and we now consider the viewing history H (t) to be the history of the active user (as opposed to all users). We can now compute the posterior distribution as follows: fa|H a H(t) = =
+Rp
+
+f H|a H(t) a fa (a) fH H(t) fa (a) fa (a) fa (a)
+Rp t-1  =1 fz t-1  =1 fz t-1  =1 fz t-1  =1 fz
+
+z ( ) z ( ) da r( ) - aT bj ( ) r( ) - aT bj ( ) da
+
+=
+
+. observe the user's rating r(t) end for The idea behind posterior sampling algorithm is to force optimism through probabilistic action. Specifically at each time step, t, we will make a recommendation j (t) based on the probability that it is the best possible recommendation, (t) P j (t) = j . However, this probability is inaccessible, so instead the algorithm samples a model for the unknown feature vectors based on the probability that they are the true feature vectors (given the viewing history), and finds the optimal recommendation should this be the true model. It can be shown that this sampling technique is equivalent to sampling a recommendation based on the probability it is optimal, and a more detailed description of the algorithm and its motivations can be seen in [2]. Thus the algorithm proceeds to keep track of the distribution of model parameters at each time step, and updates them accordingly.
+
+fa (a)
+
+But observe in this simple case computing the posterior is much simpler. The numerator is clearly a Gaussian, and the denominator is just a normalizing term, thus we determine (t) (t) a H(t)  N µa , a . We can formulate a recursive update rule for the parameters µa , a by massaging the numerator into an appropriate form (this is done in the appendix). We find the following update equations for the posterior: (t) a µ(t) a = = (t-1) a b(t-1) b(t-1) + 2 z
+-1 (t-1) µa T -1 (t) (t)
+
+(t-1) (t) a a
+
++
+
+r(t-1) (t-1) b 2 z
+
+These recursive update equations are convenient for implementation, and can be used efficiently by storing -1 , however some intuition as to their operation can be seen by applying
+
+the matrix inversion lemma. Through it, we find: a
+(t-1)
+
+(t) a
+
+=
+
+(t-1) - a
+
+bj (t-1) bT(t-1) a j
+(t-1) (t-1) (t-1)
+
+(t-1)
+
+2 z + bT(t-1) a j
+
+bj (t-1) bj (t-1) µa bj (t-1)
+(t-1) T (t-1)
+
+µ(t) a
+
+=
+
+µ(t-1) a
+
++
+
+r(t-1) a
+
+- a
+
+2 z + bT(t-1) a j
+
+bj (t-1)
+
+a UCB. In the general problem setting, it is unclear how to implement UCB in any meaningful way, however it is rather elegant in the simplified case of given item feature vectors. In the simplified case, (using the priors described in the previous section) we observe that the posterior of a given H(t) is Gaussian, thus the distribution on the reward of recommending item j is also Gaussian. We compute the mean and variance as follows:
+2 j 2 = bT a bj + z j
+
+Thus, essentially, at each step the posterior mean shifts towards (or away) the feature vector of the recommended item. Similarly the covariance  thins out to select for single direction. The rest of our work revolves mostly around analyzing the simplified problem setting, however this simplification is extremely useful for the general case as well. Observe, f A, B H(t) = f A B, H(t) f B H(t)
+
+µj
+
+= bT µa j
+
+Thus computing the p-th percentile of the reward can be done, simply by inverting the cdf of the normal distribution. D. Mixed Approaches From evaluation we observe that U CB and posterior sampling each have unique advantages. Thus we propose various schemes that allow you to achieve the various performance trade-offs of both. First we propose an -greedy approach and second we propose a two-phase approach. These were both studied in the simplified case, but could potentially be applied to the general setting as well. The -UCB algorithm will flip a weighted coin at each timestep to decide weather to obtain a recommendation through posterior sampling or through UCB. Specifically the algorithm will elect to perform UCB percent of the time. The two phased approach will begin by learning through posterior sampling until some time T , after which it proceeds to output recommendations through the UCB approach. In the next section, we will thoroughly study the performance of all of the algorithms presented in this section. E. The Case of No-repeat Recommendations Throughout this work we assumed that it is relevant to recommend the same item several times. However, in some settings this is not very natural. For instance, if the system provides recommendations for viewing movies, all of the above algorithms would eventually chose to show the same movie over and over. Clearly this is not very useful, and this can be resolved in several ways. We could lower the reward of successive viewings, but this adds a complicated time dependence to our model. More simply we can prohibit the algorithm from suggesting the same item multiple times. In the case of suggesting movies this is natural since users would rarely view the same production multiple times. III. I MPLEMENTATION AND E VALUATION In this section, we present our implementation results for the aforementioned algorithms. For the purpose of numerical simulations, we used MATLAB. We have carried out algorithms both on synthetic data and freely available MovieLens dataset. For the purpose of synthetic data, we generate a random 943 × 1682 matrix (the same size as MovieLens data) with rank 30 by generating random Gaussian feature matrices and multiplying them together. Each of the entries of feature
+
+Thus we can perform posterior sampling in the general case ^ by first sampling item features B, according to f B H(t) , and then sampling A from a gaussian distribution with mean and variance determined by the previously derived update ^ equations given the selected features B. Unfortunately the (t) distribution of B H is quite complicated; after vectorizing  - the matrix B into a vector B  Rnp we find:  -  -1/2 -   - -  - exp k B T B + cT B f B H(t)  p B  - In the above p is a polynomial function in the entries of B , k is some scalar, and c is a vector in Rnp . Unfortunately, even in this form, it is still unclear how to sample from this distribution. C. A UCB Approach Algorithm 2 UCB Start with prior distribution on (A, B), f (A, B), and an optimism parameter p  (0, 1) for t = 1, 2, . . . do Observe arrival of user i(t) Compute the distribution on the reward of each item For all items, compute Uj , the p-th percentile of the reward of item j Compute and output recommendation j (t) where j (t) = arg max Uj
+j
+
+Observe the user's rating r end for
+
+(t)
+
+UCB is a completely different approach from posterior sampling. At each timestep the algorithm computes an upper confidence bound on the reward of each of the items. The algorithm will then suggest the algorithm with the highest UCB. For our purposes, we will use a specific percentile of the reward as the UCB of each item. This is generally hard to do and other literature uses various heuristics to determine
+
+matrices comes from a N (0, 1/p). Then, we will take item feature vectors as granted and try to estimate user feature matrix by considering a Gaussian prior. Figure 1 shows the cumulative regret versus time, for posterior sampling and UCB with four different parameters. We can see that posterior sampling might work worse at first by exploring too much, but it pays off later when the better understanding of the arms comes to help later.
+50 45 40 35 Cumulative regret 30 25 20 15 10 5 0 0 100 200 300 400 Time 500 600 700 800 Posterior Sampling UCB with 0.5 percentile UCB with 0.95 percentile UCB with 0.99 percentile UCB with 0.999 percentile
+
+200 180 160 140 Cumulative regret 120 100 80 60 40 20 0 0 100 200 300 400 Time 500 600 700 800 Posterior Sampling UCB with 0.5 percentile UCB with 0.95 percentile UCB with 0.99 percentile UCB with 0.999 percentile
+
+Fig. 3. Cumulative regret of posterior sampling and UCB algorithms for synthetic data
+with rank = 100
+
+Fig. 1. Cumulative regret of posterior sampling and UCB algorithms on synthetic data
+
+Cumulative regret
+
+Notice that the regret observed by each of these algorithms is very good compared to the total reward they obtain (the cumulative rewards at t=800 is in the order of 500 while the difference in rewards is in the order of 1). In order to show this, we have plotted the cumulative reward versus time for all of these algorithms in Figure 2 and it can be seen that it is close to the optimal reward.
+500 Posterior Sampling UCB with 0.5 percentile UCB with 0.95 percentile UCB with 0.99 percentile UCB with 0.999 percentile Optimal reward
+
+algorithms. Here, the greedy algorithm chooses the arm that maximized the expected instantaneous reward and can be considered as UCB with percentile 50%. At each time, the -greedy algorithm makes greedy decision with probability , and performs an iteration of posterior sampling with probability 1 - . By looking at Figure 4, we can see that the performance of the greedy algorithm improves dramatically when it's combined with posterior sampling 50% of the time. This will result in even more computationally efficient methods while the regret still remains acceptably low.
+50 45 40 35 30 25 20 15 10 5 Posterior Sampling eps=0.5 eps=0.8 Greedy 0 100 200 300 400 Time 500 600 700 800
+
+400
+
+Cumulative reward
+
+300
+
+200
+
+0
+
+100
+
+Fig. 4. Cumulative regret for hybrid approach on synthetic data
+
+0
+
+-100
+
+0
+
+100
+
+200
+
+300
+
+400 Time
+
+500
+
+600
+
+700
+
+800
+
+Fig. 2. Cumulative reward of posterior sampling and UCB algorithms on synthetic data
+
+We also tried similar simulations for different ranks of the underlying matrix. Figure 3 shows the performance of these algorithms when the rank of the preference matrix is 100. It can be seen that posterior sampling outperforms UCB. One interesting observation is that unlike posterior sampling, UCB methods are very sensitive to the parameters used in algorithms (in our case the percentile parameter), and using inappropriate parameter may result in non-zero asymptotic regret. We observe that the optimal tuning is highly sensitive to the data, specifically to its rank. As a variation of the introduced algorithms, we have carried out a combination of posterior sampling and greedy
+
+We also carried out the posterior sampling and UCB algorithms under the assumption that no item can be recommended to a user more than once. Notice that in this case, we expect the regret to be decreasing at some point, because the expected regret at time 1682 is equal to zero. Figure 5 shows the performance of these algorithms in this case. We have implemented all these methods for the MovieLens dataset and got similar results. For example Figure 6 shows the cumulative regret for the posterior sampling and UCB with different parameters on MovieLens dataset. As seen in Figure 6, UCB algorithm with parameter 0.95 works better than the other instances of UCB, which further shows that there is no rule for finding the best parameters for UCB algorithms. IV. C ONCLUSIONS All of the algorithms we analyzed perform extremely well. The difference in regret between them is negligible compared
+
+7 Posterior Sampling UCB-0.50 UCB-0.95 UCB-0.99
+
+only the feature vector of a single user, a  Rp . Then: f a H(t) =
+Rp
+
+6
+
+fa (a) fa (a)
+
+5 Cumulative Regret
+
+t-1  =1 fz t-1  =1 fz
+
+r( ) - aT bj ( ) r( ) - aT bj ( ) da
+
+4
+
+t-1
+
+= C1 fa (a)
+3
+
+fz r( ) - aT bj ( )
+ =1
+
+2
+
+= C2 fz r(t-1) - aT bj (t-1) f a H(t-1) = C3 exp - r(t-1) - aT bj (t-1) 2 2z
+2
+
+1
+
+×
+
+0
+
+0
+
+100
+
+200
+
+300 Time
+
+400
+
+500
+
+600
+
+Fig. 5. Cumulative regret for the case of no repetitions, on synthetic data
+50 45 40 35 Cumulative regret 30 25 20 15 10 5 0 0 20 40 Time 60 Posterior Sampling UCB with 0.5 percentile UCB with 0.95 percentile UCB with 0.99 percentile UCB with 0.999 percentile 80 100
+
+-1 1 exp - (a - µ(t-1) )T (t-1) (a - µ(t-1) ) a a a 2 Now it is clear that the distribution remains Gaussian. At this point simply compute the coefficients of the quadratic and linear terms to solve for the new mean and covariance. This yields
+
+(t) a µ(t) a
+
+= =
+
+(t-1) a
+
+b(t-1) b(t-1) + 2 z
+-1 (t-1) µa
+
+T
+
+-1
+
+(t-1) (t) a a
+
++
+
+r(t-1) (t-1) b 2 z
+
+B. Woodury Matrix Identity & Update rules Recall the Woodury Matrix Identity: (A + U CV )-1 = A-1 - A-1 U C -1 + V A-1 U
+-1
+
+Fig. 6. Cumulative regret of posterior sampling and UCB on MovieLens dataset
+
+V A-1
+(t)
+
+to the total reward collected. Thus we advocate posterior sampling as the best general purpose solution for several reasons. First, it is extremely efficient compare to the UCB style approach. Second, it does not require any tuning; while we observed that UCB can outperform posterior sampling it is extremely reliant on proper tuning (which can be hard to determine in practice). Furthermore, posterior sampling can clearly be extended to the general problem setting, whereas our stated UCB method is not. Lastly we note that using previously mentioned hybrid approaches it is possible to achieve many different efficiency/regret trade-offs. V. F UTURE W ORK It would be interesting to more closely analyze the general case. Posterior sampling can be implemented through Gibb's sampling, or the Metropolis-Hastings algorithm. UCB as described in this paper would be much more difficult to implement, but we could try various heuristics and other UCB style algorithms. Alternatively this work could be continued in the practical direction by building a real-life recommendation system utilizing these algorithms and studying its performance. A PPENDIX A. Derivation of Posterior Update Rules Again consider the simplified case where we know the latent feature vectors of the items. For compactness we will consider
+
+For ease of notation in this section we will refer to a as (t) t , µa as µt , r(t) as r, and lastly we refer to b(t) simply as b. Apply the lemma to the previously derived update rules: t = = bbT 2 z t-1 bbT t-1 t-1 - 2 z + bT t-1 b t-1 +
+-1
+
+Now we can plug this into the derivation of µt : µt = = = t t-1 -1 µt-1 + r b 2 z t-1 bbT t-1 r t-1 - 2 t-1 -1 µt-1 + 2 b T z + b t-1 b z t-1 bµT b t-1 µt-1 - 2 + z + bT t-1 b 2 r z t-1 b + bT t-1 bt-1 b - t-1 bbT t-1 b 2 2 z z + bT t-1 b rt-1 - t-1 bµT t-1 µt-1 + b 2 z + bT t-1 b R EFERENCES
+[1] Yash Deshpande, Andrea Montanari, "Linear Bandits in High Dimension and Recommendation Systems". Available online: http://arxiv.org/abs/1301.1722 [2] Daniel Russo, Benjamin Van Roy, "Learning to Optimize Via Posterior Sampling". Available online: http://arxiv.org/abs/1301.2609 [3] Paat Rusmevichientong, John N. Tsitsiklis, "Linearly Parameterized Bandits". Available online: http://arxiv.org/abs/0812.3465
+
+=
+

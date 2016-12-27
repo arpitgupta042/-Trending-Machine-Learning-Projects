@@ -1,0 +1,633 @@
+2D Visualization of Immune System Cellular Protein Data by Nonlinear Dimensionality Reduction
+
+Andre Esteva esteva@stanford.edu Stanford University, Electrical Engineering, 496 Lomita Mall, Durand 196, Stanford, CA 94305 USA Anand Sampat asampat@stanford.edu Stanford University, Electrical Engineering, 450 Serra Mall, Stanford, CA 94305 USA Amit Badlani abadlani@stanford.edu Stanford University, Electrical Engineering, 450 Serra Mall, Stanford, CA 94305 USA
+
+Abstract
+We present in this paper a way to effectively visualize multi-dimensional immune system cellular data by means of nonlinear methods. We find that Stochastic Neighbor Embedding (SNE), and it's variations, t-SNE and s-SNE, to be most effective at successfully mapping clusters of points into a two dimensional embedding space while preserving both the structure between similar points and the disparity between different clusters. Using a centroid-based metric that relabels points according to the cluster centroid to which they are closest, we conclude that SNE works significantly better than linear and spectral methods. By using an optimization approach for SNE that follows the 'spectral direction' of descent, we are able to run the SNE varients and EE two orders of magnitude faster than with standard optimization. Finally, we demonstrate superior classification of data by first reducing its dimension then applying supervised learning using a C-SVC SVM and -SVC SVM.
+
+immune system cells, which are contained in bone marrow, are comprised of a variety of cell types, and to a large degree are uniquely identifiable by the proteins they contain. Highly sophisticated methods have been developed that process cells and return information on the types and quantities of proteins expressed in those cells. This data can then be viewed by an expert in the field and categorized. The laborious process of viewing the different dimensions of protein expression and categorizing a cell's type is known as gating. 1.2. Project Goals and Metrics It is of interest to cancer immunologists to find structure within multi-dimensional protein expression space and map it onto a lower dimensions (refered to henceforth as a map space) for ease of visualization and understanding. As cells change and evolve, so do the types and quantities of the proteins they express. This leads to a shifting of their representation in multidimensional space which can be tracked. Dimensionality reduction of original biological data coupled with a metric for how well the projection represents the original data would provide biologists with a powerful tool for understanding the structure of their data. To address these challenges we demonstrate: · Visualization: The application of linear and nonlinear methods of dimensionality reduction of multi-dimensional protein data · Visualization: A metric-based comparison of how each algorithm performs · Classification: Application of SVMs to both the original data and to the dimensionality reduced data
+
+1. Introduction
+1.1. Immune Cell Data In the field of cancer immunology, scientists use the protein content of immune system cells as a way to identify a cells corresponding type (1). For example,
+Appearing in Proceedings of the 29 th International Conference on Machine Learning, Edinburgh, Scotland, UK, 2012. Copyright 2012 by the author(s)/owner(s).
+
+2D Visualization of Immune System Cellular Protein Data by Nonlinear Dimensionality Reduction
+
+damentally different roles in cell identification. Surface proteins are semi-permanent markers that last for significant periods of time relative to the lifetime of a cell, whereas intracellular proteins are highly transient and can change quickly. This is analogous to classifying a person based on where they live (semi-permanent) versus what they wore on a particular day (transient). Understanding this, we select as our feature space the n = 17 surface protein markers of the cell data.
+Figure 1. Overview of data acquisition, from extraction of cellular protein counts to storage in online databanks
+
+3. Methods
+The datafiles provided contain cell counts on the order of tens of thousands where we consider each cell to be a point in Rn . To simplify our algorithms and account for matrix size differences in the different .FCS files we run our algorithms on equally sized portions of different cell data. In particular, if we let S be the set of all cell sub-types as defined in Table 1, S  S be some subset of interest with cardinality |S|, and N some fixed positive integer, then by taking N rows from each sub-type s  S we form a matrix M  RN |S|×n . This allows us to run algorithms that accomplish dimensionality reduction from Rn onto R2 quickly and without giving unfair weighting to a particular cell sub-type. 3.1. Linear Methods
+
+Table 1. Classification of Cell Types and their Corresponding Sub-Types
+
+Cell Types Stem Cell B Cells T Cells NK pDC Monocytes
+
+Sub-types HSC, MPP, CMP, GMP, MEP Plasma, pre-B-I, pre-B- II, Immature, Mature CD38 low, Mature CD38 mid Mature CD4+, Mature CD8+ Naive CD4+, Naive CD8+ CD11B - , CD11B high, CD11B mid
+
+2. Data Representation
+2.1. Data Acquisition Mass cytometry is a single-cell multiparametric protein detection technology based on inductively coupled plasma mass spectrometry. It is an extension of flow cytometry in which antibodies are tagged with isotopically pure rare earth elements allowing simultaneous measurement of greater than 40 parameters while circumventing the issue of spectral overlap. In single-cell droplet form, the cells are passed through an elemental mass spectrometer and an integrator to generate an m × p matrix where m is the number of cells processed and p is the number of distinct proteins contained in the cell set. These matrices are stored as .FCS files in online databanks which we have been granted access to. Figure 1, taken from (1) shows this process. Table 1 lists the cell types and subtypes that are parsed using this method. 2.2. Feature Selection The p = 41 types of proteins collected for each cell using mass cytometry are comprised of both intracellular and surface proteins. These two types play fun-
+
+Linear methods such as Principal Components Analysis (PCA) and Multidimensional Scaling are straightforward and standard ways of achieving dimensionality reduction. The caveat is the requirement that the data be linearly separable in the space being considered. Unlike SVMs, which have the ability to project data to higher dimensions in order to linearly separate it, PCA runs in the original dimension of the data. Given the nature of this data and the fact that cellular protein counts can vary largely between cell types, PCA is not an optimal method for visualizing these sorts of problems. We apply PCA and demonstrate that its visualization is quite poor, as expected. 3.2. Spectral Methods Spectral methods like Locally Linear Embedding (LLE), ISOMAP, and Laplacian Eigenmaps (LE) seem like better candidates for dimensionality reduction of problems of this sort. For example, LE tries to preserve the local structure of the data while keeping the scale of the embedding data fixed, leading to good results on toy problems such as the swiss roll. We apply LLE and ISOMAP to this data set and show, rather counterintuitively, that the results are even worse than PCA.
+
+2D Visualization of Immune System Cellular Protein Data by Nonlinear Dimensionality Reduction
+
+3.3. Nonlinear Methods Nonlinear methods, as demonstrated in the section below, are the most effective of the algorithms used for visualization of celllular protein data. Cellular protein data is largely believed to exist in multi-dimensional space in gaussian-distributed clumps that can have a high degree of overlap. These gaussians can exhibit high degrees of variation in their average and variance values. As such, we consider the variants of SNE (2), tSNE (3) and s-SNE (4), along with Elastic Embedding (EE) (5) as prime candidates for effective visualization. These algorithms minimize objective functions that mimic attractive and repulsive forces in the mapping space, which keeps the images of nearby objects close while pushing all image clusters apart from each other. They take the form E(X, ) = E + (X) + E - (X) where E + (X) is the attractive term, E - (X) the repulsive term,   0 is a fixed parameter, and X = {xn } is the set of points in the mapping space. The repulsive term significantly improves them over spectral methods like LE. 3.4. Fast Learning of Nonlinear Embeddings In order to speed up the SNE and EE algorithms, we employ a strategy for optimization of the objective functions in the "spectral direction" (6). Optimization typically involves computing the gradient g = E of the objective function and computing a descent direction as p by solving the linear system Bp = -g using some positive definitie B. When B = I this is gradient descent, and for B = 2 E we have Newton's Method. Descending in the spectral direction is accomplished by letting B be the first term of 2 E and, for small data sets (< 10,000 points) is two orders of magnitude faster than gradient descent and Newton's Method. 3.5. Metric on Quality of Visualization We quantify the quality of the various algorithms at accurately segregating different cell types in the map space using a simple re-labeling technique. After projection, the averages of all the points (centroids) of each cell sub-type are calculated. Each point is then relabeled based on whichever centroid it is closest to. Formally, for cell sub-type i with P [i] points {x[i] } in the projection space, the centroid is given [i] by µ[i] = P1 [i] j xj , and each point x is relabeled as sub-type i = arg minj ||µ[j] - x||. The error of a visualization with N points is then calculated as N 1 err = N j 1{originalLabel(xj ) = newLabel(xj )}.
+
+4. Results
+4.1. Linear Methods - PCA We consider PCA over all 20 cell sub-types with 400 cells per cell sub-type and obtain a 62.18% re-labeling error. Figure 2 below shows the visualized data. It is clear that the overlap between points renders the map meaningless. The colored stars in the figures represent the centroids of each sub-type. Even when we reduce the number of sub-types to 7 (Monocytes and T cells), the performance is still abysmal at 48.43% error, as shown in Figure 3.
+
+PCA: N/file=400, err=0.62185
+6 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II 6 4 4
+
+PCA: N/file=400, err=0.62185
+CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II
+
+2
+
+2
+
+0
+
+0
+
+-2
+
+-2
+
+-4
+
+-4
+
+-6 -8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+-6 -8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 2. Principal Components Analysis on all cell subtypes with 400 cells per subtype
+
+PCA: N/file=400, err=0.48429
+6 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T 4
+
+Relabel PCA: N/file=400, err=0.48429
+6 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T 4
+
+2
+
+2
+
+0
+
+0
+
+-2
+
+-2
+
+-4
+
+-4
+
+-6 -10
+
+-8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+-6 -10
+
+-8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 3. Principal Components Analysis on Monocytes and T Cells with 400 cells per subtype
+
+4.2. Spectral Methods - ISOMAP We illustrate in Figure 4 the spectral method ISOMAP on this data both for all cell sub-types (N/type = 100) and for just monocytes and T cells (N/type = 400) combined. In each case, the algorithm yields no discernible segmented high-level structure.
+
+Isomap: All Cell Types
+25 15 20 10 15
+
+Isomap: Monocytes & T Cells
+
+10 5 5
+
+0 0 -5
+
+-10 -5
+
+-15
+
+-20 -20
+
+-15
+
+-10
+
+-5
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+-10 -15
+
+-10
+
+-5
+
+0
+
+5
+
+10
+
+15
+
+(a) All cell types
+
+(b) Monocytes and T Cells
+
+Figure 4. ISOMAP with 400 cells per subtype
+
+2D Visualization of Immune System Cellular Protein Data by Nonlinear Dimensionality Reduction
+
+4.3. Nonlinear Methods
+tSNE: err=0.074643
+50 50 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T
+
+Relabel tSNE: err=0.074643
+40 30 20
+
+We begin by considering t-SNE and sampling 400 cells from each cell type. We see in Figure 5 that the algorithm clusters the points reasonably well, even though it attains a relatively high error of 24.33%. On the other hand, when we only work with Monocytes and T Cells (Figure 6), we obtain a 7.46% error - a 7-fold improvement on PCA for the same data set. Next, we consider s-SNE on a similar sample of 400 cells taken from either all cell types (Figure 7) or Monocytes and T Cells (Figure 8). We see that the visualization appears to perform as well as tSNE, yet the metric shows that its performance is slightly worse. sSNE attained errors of 28.57% and 8.18% for all cell types and the subset of Monocytes and T Cells, respectively. We now look to EE, the last of the nonlinear methods we are considering, and run the algorithm with the same inputs as the previous methods. Once again, we take a sample of 400 cells from (i) all cell types and (ii) Monocytes and T Cells. Figure 9 shows the visualization of all cell subtypes and Figure 10 shows it for Monocytes and T Cells. Though the algorithm works better than PCA, it performs substantially worse than the SNE variants with an error of 41.838% for all cells and 12.46% for just Monocytes and T Cells. In addition, there is less spacing between clusters than with the SNE variants. Table 2 summarizes the errors for the different algorithms.
+80 60
+
+40
+
+30
+
+20
+
+10
+
+10
+
+0
+
+0
+
+-10
+
+-20
+
+-30
+
+CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T
+
+-10
+
+-20
+
+-30
+
+-40
+
+-40
+
+-50 -200
+
+-150
+
+-100
+
+-50
+
+0
+
+50
+
+100
+
+150
+
+200
+
+-50 -200
+
+-150
+
+-100
+
+-50
+
+0
+
+50
+
+100
+
+150
+
+200
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 6. tSNE on Monocytes and T Cells with 400 cells per subtype
+sSNE: : err=0.28667
+8 6 4
+
+Relabel sSNE: : err=0.28667
+8 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II 6 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte 4 CMP GMP 2 HSC Immature B MEP 0 MPP Mature CD38lo B Mature CD38mid B -2 Mature CD4+ T Mature CD8+ T NK -4 Naive CD4+ T Naive CD8+ T Plasma cell -6 Plasmacytoid DC Pre-B I Pre-B II -8
+
+2
+
+0
+
+-2
+
+-4
+
+-6
+
+-8
+
+-10 -10
+
+-5
+
+0
+
+5
+
+10
+
+15
+
+-10 -10
+
+-5
+
+0
+
+5
+
+10
+
+15
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 7. sSNE on all cell subtypes with 400 cells per subtype
+sSNE: : err=0.081786
+10 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T 8 6
+
+Relabel sSNE: : err=0.081786
+10 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T 8 6
+
+4
+4
+
+2
+
+2
+
+0
+
+0
+
+-2
+
+-2
+
+-4
+
+-4
+
+-6
+
+-6
+
+-8 -8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+-8 -8
+
+-6
+
+-4
+
+-2
+
+0
+
+2
+
+4
+
+6
+
+8
+
+10
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 8. sSNE on Monocytes and T Cells with 400 cells per subtype
+EE: err=0.41838
+80
+CD11b- Monocyte 60 CD11bhi Monocyte CD11bmid Monocyte CMP 40 GMP HSC Immature B MEP 20 MPP Mature CD38lo B Mature CD38mid B 0 Mature CD4+ T Mature CD8+ T NK -20 Naive CD4+ T Naive CD8+ T Plasma cell -40 Plasmacytoid DC Pre-B I Pre-B II -60
+
+Relabel EE: err=0.41838
+CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II
+
+Table 2. Algorithm Errors Algorithm PCA tSNE sSNE EE All Cells 62.18% 24.33% 28.67 % 41.84% Monocytes & T Cells 48.42% 7.46% 8.18% 12.46%
+
+40
+
+20
+
+0
+
+-20
+
+-40
+
+-60
+
+-80 -200
+
+-150
+
+-100
+
+-50
+
+0
+
+50
+
+100
+
+-80 -200
+
+-150
+
+-100
+
+-50
+
+0
+
+50
+
+100
+
+(a) Original Labels
+
+(b) New Labels
+
+Figure 9. EE on all cell subtypes with 400 cells per subtype
+EE: err=0.12464
+250 250 200 200 150 150
+
+Relabel EE: err=0.12464
+
+tSNE: err=0.2433
+30 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II 30 20 20 10 10
+
+Relabel tSNE: err=0.2433
+CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte CMP GMP HSC Immature B MEP MPP Mature CD38lo B Mature CD38mid B Mature CD4+ T Mature CD8+ T NK Naive CD4+ T Naive CD8+ T Plasma cell Plasmacytoid DC Pre-B I Pre-B II
+
+100
+
+100
+
+50 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T
+
+50
+
+0
+
+0 CD11b- Monocyte CD11bhi Monocyte CD11bmid Monocyte Mature CD4+ T Mature CD8+ T Naive CD4+ T Naive CD8+ T
+
+-50
+
+-50
+
+-100
+
+-100
+
+0
+
+0
+
+-150
+
+-150
+
+-10
+
+-10
+
+-200
+
+-200
+
+-20
+
+-20
+
+-250 -40
+
+-30
+
+-20
+
+-10
+
+0
+
+10
+
+20
+
+30
+
+40
+
+-250 -40
+
+-30
+
+-20
+
+-10
+
+0
+
+10
+
+20
+
+30
+
+40
+
+-30
+
+-30
+
+-40 -30
+
+-20
+
+-10
+
+0
+
+10
+
+20
+
+30
+
+-40 -30
+
+(a) Original Labels
+-20 -10 0 10 20 30
+
+(b) New Labels
+
+(a) Original Labels
+
+(b) New Labels Figure 10. EE on Monocytes and T Cells with 400 cells per subtype
+
+Figure 5. tSNE on all cell sub-types with 400 cells per subtype
+
+2D Visualization of Immune System Cellular Protein Data by Nonlinear Dimensionality Reduction Table 3. SVM Classification Rate C-SVC radial polyn. linear sigmoid nu-SVC radial polyn. linear sigmoid Original 5.2% 4.6% 5.53 % 5.8% Original 5% 4.4% 5.8 % 4.6% PCA 91.3% 92.3% 93.3% 70.8% PCA 90% 96.2% 91.4% 71% t-SNE 78.3 % 74.6 % 74.07% 8.4 % t-SNE 76.4 % 66.8 % 68.2% 26.4 % EE 59.1 55.6 56.9 7.6 % % % %
+
+simultaneously showing that PCA and ISOMAP yield poor results. We further conclude that the data is nonlinear and that it supports the belief that clusters of healthy cells in this protein space are gaussiandistributed. In addition, we demonstrate a substantial improvement in SVM-based classification of data by first reducing the dimensionality of the data and then applying classification on the reduced data. We find that by combining PCA with -SVC based SVM and a polynomial kernel a 96.2% classification rate is achieved. Our work provides a general tool which biologists can use to visualize and better understand multidimensional cellular protein data. This is a first step towards automated cell-labelling and further work could yield a scalable platform by which both healthy and unhealthy immune system cells could be easily categorized, leading to a cancerous-cell detection system. Additionally this can be used by researchers to track how immune system cells' protein content changes as they mature, evolve, and differentiate.
+
+EE 58 51.2 46.8 9.8 % % % %
+
+4.4. Classification Shifting our attention from visualization to classification, we compare the classification effectiveness of CSVC and -SVC SVM (per the LIBSVM library (7)) run on the original data to the projected data, and reach a counter-intuitive result. The SVM applied to the original data fails entirely, with low success rates. The SVM applied to the projected data classifies with significantly higher accuracies, depending on the dimensionality reduction algorithm used. Table 3 shows the success rates of C-SVC and -SVC with various kernels (with s-SNE omitted as its values are very close to t-SNE). We find that the best classification is achieved, with a success rate of 96.2%, when using -SVC based SVM with a polynomial kernel on the PCA-reduced data. The classifiers used are multiclass classifiers that train #celltypes binary classifiers 2 resulting in 190 decision boundaries that more effectively classify the 20 labels than a standard one vs all algorithm.
+
+6. Acknowledgments
+We would like to thank Karen Sachs (Stanford University) and Andrew Gentes (Stanford University) for their support and guidance throughout this project, as well as for providing the data required for its completion.
+
+References
+[1] Bendall, S. C. et al. Single-Cell Mass Cytometry of Differential Immune and Drug Responses Across a Human Hematopoietic Continuum. Science 332, 687­696 (2011). [2] Hinton, G. E. & Roweis, S. T. 1. Hinton, G. E. & Roweis, S. T. Stochastic neighbor embedding. Advances in neural information . . . (2002). - Google Scholar. Advances in neural information . . . (2002). [3] Van der Maaten, L. & Hinton, G. Visualizing data using t-SNE. Journal of Machine Learning Research 9, 85 (2008). [4] Cook, J., Sutskever, I. & Mnih, A. Visualizing similarity data with a mixture of maps. International . . . (2007). [5] Carreira-Perpin´n, M. A. The Elastic Embedding Ala gorithm for Dimensionality Reduction. ICML (2010). [6] Vladymyrov, M. & Carreira-Perpinan, M. PartialHessian strategies for fast learning of nonlinear embeddings. arXiv preprint arXiv:1206.4646 (2012). [7] Chang, C.-C. & Lin, C.-J. LIBSVM. ACM Transactions on Intelligent Systems and Technology 2, 1­27 (2011).
+
+5. Conclusion
+Human immune system cells are comprised of a variety of cell types and sub-types which are characterized by the proteins contained within them. Proteins embedded on the cell's surface are particularly effective at characterizing the type of cell. We apply dimensionality reduction considering only the surface proteins as features to aid the visualization of cells in this multi-dimensional protein space. We apply Principle Components Analysis, ISOMAP, elastic embedding, symmetric-stochastic neighbor embedding, and student t-distributed stochastic neighbor embedding to this problem and use a centroid-based relabeling metric to quantify the effectiveness of each visualization. We demonstrate the superiority of the nonlinear methods, with t-SNE being the most effective, while
+

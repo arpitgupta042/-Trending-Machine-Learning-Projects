@@ -1,0 +1,110 @@
+Occlusion robust pose and model estimation using Gaussian Process Latent Variable Model on GPU
+Christopher B. Choy Stanford University
+chrischoy@stanford.edu
+
+Abstract
+In this project, we would like to develop multi-object pose and model estimation which uses the 3D voxelized model and foreground background segmentation to detect 3D pose and model variation. In the relevant literature, [4], the authors used gradient descent to minimize the optimization energy function which is the integration over image multiplied by the smoothed step function of SDF of 3D model (silhouette) to jointly optimize the 6 degree location and rotations and deformation of model. The system is generally stable given prior mask and pose and works faster than state-of-the-art 3D pose estimation algorithm such as Zia and Stark [7]. However, the system requires prior mask which is hard to get automatically. In this project, we propose automatic segmentation mechanism that make use of object relation and alternating multi-object newton step. Thus, we improve the system by making it robust to texture and background color and especially occlusion from other object. The pipeline is first, we use [2] object detector to find location of objects and use these bounding boxes for contour detection techniques such as hierarchical image segmentation [8] or Grab Cut to capture the contour of objects which is essential for correct pose estimation. Then we run newton step for pose and model estimation for multiple objects.
+
+(a) initialization: a jeep car
+
+(b) after 10 iterations: sedan
+
+Figure 1: Joint optimization over pose estimation and model deformation
+
+1. Introduction
+1.1. Relevant Literature
+The pose(3 dimension location and 3 dimension rotation) estimation is one of the fundamental problems that intrigued many scholars from the very beginning of the computer vision [1]. However, due to the complexity and noise, pose estimation using 3D model had been set aside from the main stream. Instead 2D features such as SIFT and HOG has been used to find a bounding box.[2] Recently, there has been active research about this topic and object recognition using 3D model [3] and they showed 1
+
+that incorporating 3D structure helps recognition[4, 5, 6, 7]. Among these papers, [7] uses 2D image cues for part detection and 3D model variation and this is one of the successful algorithm that works in the real world setting but their computation time is too prohibitive. Before we delve into details, we would like to emphasize how important 3D model recognition is in our perception which enables us to navigate through intricate obstacles and recognize objects. However such recognition would not be complete if we can't estimate what the object's pose is. For instance, for a driverless car, it is crucial to recognize car's direction precisely otherwise it might get into an accident. Also, 3D pose estimation helps machine to predict the occluded part of an object [4]. Needless to say, this prediction will be crucial if a robot navigates through a complex environment.
+
+1.2. Overview
+To accurately capture the model, we first voxelize the model by N × N × N grid and for stability, we use a sign distance function(SDF) to preserve the contour of an object. (i.e. the interior of the contour have negative distance where as the exterior have positive distance from the contour C). To search over discrete space of collection of objects, we use a non-linear dimensionality reduction technique called Gaussian Process Latent Variable Model(GPLVM) [9]. In
+
+short, GPLVM is a variant of probabilistic PCA which is capable of reducing high dimensional object to low dimension counterpart (latent variable) using non-parametric representation. So we jointly search over possible 7D (location, rotation, scale) plus latent variable for shape deformation. Figure 1 shows the initial and final pose of a car. It takes gradient steps to minimize the objective function. We follow the steps of [4]. The energy function required for such optimization is the following. E() = -
+x
+
+X  we can get analytic formulation of p . But X has no analytic form so we approximate it using centered finite differences.
+
+2. Model Variation
+Since we are taking Newton steps for pose estimation, we would like to take Newton steps for the model variation. Thus, we have to reduce the dimension of voxelized data to a very low dimensional representation. In [11], authors use kPCA to reduce the dimension of the voxelized models. Similary, [4] uses Gaussian Process Latent Variable Model(GPLVM). Briefly, GPLVM starts from the Probabilistic PCA (PPCA) formulation. In PPCA, data y is represented as y = W x + , where x is the latent variable and W is the mapping and white noise  = N (|0,  -1 I). Then we marginalize over x and posterior probability is given as p(y|W, ) = N (0, W W T +  -1 I). The log likelihood of the probability is D 1 DN ln(2) - ln|K| - tr(K -1 Y T Y ) 2 2 2 T -1 K = WW +  I L=- Where Y is the row-wise data matrix. The solution of W L = 0 is W = U L V where U anbd V are first few 1 eigenvectors and eigenvalues of covariance matrix D Y T Y with arbitrary rotation matrix V . In this setting K can be interpreted as an affine kernel matrix However, in the dual problem of PPCA, we marginalize W instead of x and get similar but different log probability. DN D 1 ln(2) - ln|K| - tr(K -1 Y Y T ) 2 2 2 K = XX T +  -1 I L=- And take X L = 0 and what we get is X = U LV where U and L are first few eigenvectors and eigenvalues 1 of innerproduct matrix N Y Y T . If we use non-linear kernel
+i j instead of affine kernel, (xi , xj ) = 1 exp + 22 3 + 4 ij we get Gaussian Process Latent Variable Mode. Since the objective is non-convex, we initialize using PCA and use stochastic gradient descent to find the latent variables.[9]
+
+log[((x))Pf (x) + (1 - ((x)))Pb (x)]
+
+(1) Where  is the 3D SDF and  be 2D image plane. () is projection function that indicate for foreground and background. The above function is probabilistic or but for numerical stability, exponential was used. Where Pf and Pb are foreground and background posterior probabilities respectively. Pf (u) = f P (y(u)|Cf ) f P (y(u)|Cf ) + b P (y(u)|Cb ) (2)
+
+Where Cf indicates color histogram of the foreground and f is the fraction of pixels in the foreground. Our objective is to decrease the energy function with 7 + |X | variables. 3 degree of freedom in translation and 3 degree of freedom in rotation and 1 for the scale and X for latent variable dimension. For rotation, we parametrize the rotation using quaternions. We take gradient descent to minimize the objective function. Since the energy function is multimodal and complex, it is prone to stuck in a local minimum and takes some iterations to converge. For instance, the model should intersect with the objects in the image to converge to the correct pose. The gradients of the energy function are the following. For detailed explanation we refer readers to [6]. The object deformation is quite challenging and we will refer readers to [4] for detailed information. Briefly, we voxelize models into 125 × 125 × 125 grids and the take Discrete Cosine Transformation and take coefficients of the highest 20 × 20 × 20 harmonics. We assume that the variation of the model is embedded in a very low dimensional subspace which we will use Gaussian Process Latent Variable Model(GPLVM) to reduce it to 2 latent dimensions. We will explain more in section 2. The gradient of the energy is the following E = p Pf (x) - Pb (x) () ()Pf (x) + (1 - ())Pb (x) p (3) () = (1 - ()) p e(X) e(X)  X + 1 X p (4)
+
+||x -x ||2
+
+3. Development Upon Existing Framework
+3.1. Overview
+Our system make use of state of the art object detection[2] and segmentation algorithms such as [8] and [10] to make foreground segmentation mask. Due to its imperfection, the segmentation is highly influenced by background around the object. In [4], the system requires prior 2
+
+x
+
+z
+
+(a) 3D pose after convergence, (b) pixel wize posterior fore3D model(red) ground background separation
+
+Figure 3: (a) 3D pose after 20 iterations of pixelwiseposterior (b) 3D pose after 10 iterations using [8] (c) Segmentation result [8] good as hierarchical segmentation and grab cut. Grow cut requires semi-supervised input for each of the image so it is hard to scale. So we focus on hierarchical segmentation and grab cut.
+
+mask which is hard to get automatically to make color histogram. So, in our framework, we propose automatic segmentation mechanism that later will be feed into the system. Even though the segmentation is imperfect, we can estimate pose reasonably well using non-intersection constraints.
+
+3.3. Detection and Segmentation
+The problems using hierarchical segmentation is that it takes too much time to process the whole image and if we get poor result. Also for grab cut, it requires bounding box. Thus we used Deformable Part Model [2] for car bounding box detection and feed it to the grab cut or hierarchical segmentation for foreground background segmentation. Figure 4. Through this process, we could get better segmentation. However, if we have occlusion or adjacent objects, the mask also includes the other objects. Thus we will deal with this imperfect segmentation mask using non-intersection constraints in the next section.
+
+3.2. Segmentation
+We performed several experiment on [4] to test the effectiveness of the color histogram foreground pixel-wise posterior. using (a) clean background and (b) noisy background. When the background is clean, it converged to a reasonable pose. However, it does not mean that the method works for any arbitrary initialization. The convergence sometimes happens when 3D model and the foreground of the image (object in 2D image) have overlap. This issue has been addressed also in the paper [6]. Also, we have to emphasize again that the color histogram requires foreground mask which is hard to get automatically. In (b), the system generally had more difficulty finding the right pose. The color histogram for foreground and background separation are prone to noise since the foreground color appeared also in the background. Thus it failed to register the object correctly. The primary reason for this failure is in part due to poor foreground background segmentation Figure 2a. The patch on the cup Figure 2b has similar color to the background and thus the posterior probability on the patch is very low. Thus it creates strong local minima. So, apart from the fact that the system requires foreground mask, which is hard to get automatically, the color histogram is very noisy. The comparison between hierarchical segmentation and color histogram(assuming mask is given) is shown in Figure 3. The color histogram had problem distinguishing tires and shadow from the background so it performs worse than hierarchical segmentation. Thus, we naturally move on to other state-of-the-art segmentation algorithms :  - expansion,  - swap, hierarchical segmentation, grab cut, graph cut and grow cut. However, we found out that graph cut and variation of MRF segmentation algorithms requires time consuming energy function learning. Even though we provided ground truth mask and performed learning, the performance was not as 3
+
+4. Multiple Object Pose Estimation
+To our knowledge there has been no work that tries to make use of other objects to better estimate poses of multiple objects. To make use of object relations, we define occlusion. Occlusion is case when there are more than one object is occupying the same pixel and formally, (o (X)) > 1
+oO Xalongtheray
+
+(5)
+
+where  is the projection and o (X) is the SDF of voxel X of the object o. We start from the case where there is no occlusion but the segmentation gives us poor mask. i.e. Figure 4 mask 1 and 2. For these objects, there is no overlap but it is clear that masks are not reliable. To robustly detect the objects from noisy mask, we make use of projections of the other objects and make it not overlap with the object of interest. The additional constrains that enforces that there should be only one object per pixel. min
+ oO x o o log[(o (x))Pf (x) + (1 - (o (x)))Pb (x)]
+
+s.t.
+oO
+
+(o )  1
+
+min
+ x
+
+o o log[(o (x))Pf (x) + (1 - (o (x)))Pb (x)]
+
+} } i.e. we linearly project other objects o into the mask so that when the object is taking gradient step, it take into account all the objects which helps to resolve the occlusion case. This step effectively conveys all the information about object location and occlusions. Experimentally, we found that the system reasonably converges to optimal in the interval of µ  [0.4, 0.7].
+
+5. Result
+We used Intel Xeon E5520 processor with Geforce GTX 660. Due to lack of public dataset, we created our own dataset consisting of up to 4 cars and various background. This will be publicly available. In general, the detection was reasonable except when there is too much occlusion for detection of camera height was too high (there is no right DPM template to match). For the bad case, Figure 5, we usually had very bad segmentations. i.e. segmentation mask 2 and 3 are not capturing the car correctly and it thus affect the pose estimation. However, even when the mask was not correct, Figure 6 7, non-intersection constraint make the cars to find the right pose. The information about where the occlusion happens thus help the system to find the right pose.
+
+Figure 4: Effect of non-intersection constraint. though the initialization was bad it correctly finds the right pose. (a) detection (b) initialization (c) during iteration (d) after convergence (e,f,g) segmentation of object 1,2,3 However, the optimization is too high dimensional (   R|O|(7+dimL) ) and we resort to alternating optimization scheme for faster computation [12]. while convergence { for ( o in O){ min
+ x o o log[(o (x))Pf (x) + (1 - (o (x)))Pb (x)]
+
+6. Conclusion
+In general, our proposed optimization helps effectively estimate the pose and model variation robust to occlusion. But for objective comparison, we need a metric to evaluate the performance of the pose. To do so, we are building ground truth segmentation for evaluation metric. Also, the system does not incorporates any of the image features except the binary segmentation mask. We will improve the system by making use of other features runtime. Additionally, we will incorporate supporting plane assumption that would improve the system significantly. Finally we will add computation time for future performance comparison.
+
+s.t. } }
+
+(o ) 
+o O\{o}
+
+(o )
+
+It is the stochastic version of the previous optimization. But still the optimization constraints are too high dimensional (there are total h × w constrains, corresponding to the number of pixels). Also, this strict constraints makes occlusion impossible, we loose the bound by projecting other objects into the image masks. while convergence { for ( o in O){ for (o' in O\{o}){
+o Pb (x)  µ(o ) o Pf (x)  1 - µ(o )
+
+References
+[1] D. G. Lowe, "Three-Dimensional Object Recognition from Single Two-Dimensional Images". Artificial Intelligence, 1987 [2] P. Felzenszwalb, D. McAllester, D. Ramanan, "A Discriminatively Trained, Multiscale, Deformable Part Model" IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2008 4
+
+}
+
+Figure 7: Bad initialization but non-intersection constraints push objects apart (a) Detection (b) Segmentation using Grab Cut of object 1 (c) object 2 (d) initialization (e) before convergence (f) after convergence Monocular 2D Segmentation, 3D Pose Recovery and 3D Reconstruction". ACCV 2012 Figure 5: Bad segmentation result in wrong pose (a) Detection (b) Initialization (c) Before Convergence (d) After convergence (e,f,g) Segmentation using Grab Cut of object 1,2,3 [6] Victor A. Prisacariu, Ian D. Reid, "PWP3D: RealTime Segmentation and Tracking of 3D Objects" IJCV 2012 [7] M. Zeeshan Zia, Michael Stark, Bernt Schiele, and Konrad Schindler, "Detailed 3D Representations for Object Recognition and Modeling", PAMI 2013 [8] P. Arbelaez, M. Maire, C. Fowlkes and J. Malik., "Contour Detection and Hierarchical Image Segmentation" IEEE TPAMI 2011 [9] Neil D. Lawrence, "Probabilistic Non-Linear Principal Component Analysis with Gaussian Process Latent Variables" JMLR 2005 [10] Rother, C., Kolmogorov, V., Blake, A., Rother, C., Kolmogorov, V., & Blake, A. "GrabCut: interactive foreground extraction using iterated graph cuts" ACM Transactions on Graphics 2004 [11] Sandhu, R., Dambreville, S., Yezzi, A., & Tannenbaum, A. "A Nonrigid Kernel-Based Framework for 2D-3D Pose Estimation and 2D Image Segmentation" PAMI 2011 [12] Boyd, S., Parikh, N., Chu, E., Peleato, B., & Eckstein, J. Distributed Optimization and Statistical Learning via the Alternating Direction Method of Multipliers. Foundations and Trends in Machine Learning, 2011
+
+Figure 6: Bad segmentation but non-intersection constraint help recover the correct pose (a) Detection (b) Segmentation using Grab Cut of object 1 (c) object 2 (d) initialization (e) before convergence (f) after convergence
+
+[3] B. Pepik, M. Stark, P. Gehler and B. Schiele, "Teaching 3D geometry to deformable part models". CVPR 2012 [4] A. Dame, V. A. Prisacariu, C. Y. Ren and I. D. Reid, "Dense Reconstruction Using 3D Object Shape Priors". CVPR, 2013 [5] V. A. Prisacariu, A. V. Segal, I. Reid, "Simultaneous 5
+

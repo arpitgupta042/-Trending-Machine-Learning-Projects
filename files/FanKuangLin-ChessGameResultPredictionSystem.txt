@@ -1,0 +1,194 @@
+Chess Game Result Prediction System
+Zheyuan Fan, Yuming Kuang, Xiaolin Lin, Stanford University
+CS 229 Machine Learning Project Report, Autumn 2013
+
+Abstrct
+n this project we train World Chess Federation (FIDE) rating systems using a training dataset of a recent eleven-year period with games from 2000 chess players. We will then use our system to predict the outcome of chess games played by the same players in the following half year. Accuracy between predicted results and actual game results is the primary indicator of whether our approach is a practical chess rating system.
+
+I
+
+a 135-month period of professional chess games from 2000 different chess players from year 2000 to year 2011: 1. Primary training dataset from the first 127 months to train our prediction system. 2. Secondary training dataset, which is used along with the primary data set to validate and tune parameters. 3. Initial rating list that provides an initial list of the involved players FIDE ratings and K-factor (player's game activity factor). 4. Test games dataset that identifies the chess games that we are predicting.
+
+Background
+World Chess Federation (FIDE) adopted Elo rating system since 1970 and this rating system has been the primary yardstick in the world to measure the strength of chess players. The Elo rating system also has many other applications in sports rankings. Despite the popularity of the Elo system, it has never been demonstrated that it is technically superior to other approaches. In this project we are going to investigate approaches that might do better than the Elo system. Such an investigation could have major implications on the theory and practice of ratings methodology.
+
+Method
+Model - Hidden Markov Process
+We model the game results as a Hidden Markov Process. We assume that each chess player i has a rating, or relative strength, in month t, denoted as Xi,t . We can't directly observe Xi,t , so it's the hidden state of the Hidden Markov Process. We can observe the chess game results Yt,j1 ,j2 , which denotes the result of the game between white player j1 and black player j2 in month t. Yt,j1 ,j2 can take 3 values, 1 for 'white player win', 0.5 for 'draw', 0 for 'white player lose'. The dynamics of Xi,t and Yt,j1 ,j2 is summarized as
+k
+
+Dataset
+All game results and rating data are extracted from FIDE internal database and Chessbase database. We have collected the following data in
+
+¯ Xi,t = w0 Xt +
+l=1
+
+wl Xi,t-l +
+Yt,j1 t,j1 ,j,j2 (1 2
+
+i,t
+
+i,t
+
+2  N (0, i,t )
+
+(1) Yt,j1 ,j2  - t,j1 ,j2 )
+(1-Yt,j1 ,j2 )
+
+(2)
+
+Page 1 of 5
+
+log
+
+The idea of fitting the data is to update the In (1), the dynamic of ratings Xi,t follows player ratings by maximizing the log-likelihood a time series model AR(k). In other words, function. At month t, the likelihood function of ¯ Xi,t is a weighted average of Xt-1 (average player ratings X and game results Y i,t t,j1 ,j2 is rating of all the players at month t - 1) and Xi,t-l (l = 1, 2, . . . , k) (the player's ratings of P (Xi,t , Yt,j1 ,j2 |Xi,s , s < t) ¯ previous k months), plus a Gaussian noise. Xt-1 p ¯ - 1 (Xi,t -(w0 Xt-1 + k wl Xi,t-l ))2 1 2 l=1 is included in the weighted average, because if   e 2i,t 2i,t a player doesn't play this month, we would like i=1 Yt,j1 his rating to move to the average rating of all · t,j1 ,j,j2 (1 - t,j1 ,j2 )(1-Yt,j1 ,j2 ) 2 players, instead of just the average rating of the (j1 ,j2 ) player. p ¯ - 1 (Xi,t -(w0 Xt-1 + k wl Xi,t-l ))2 1 2 l=1   e 2i,t 2i,t In (2), Yt,j1 ,j2 follows a Bernoulli-like disi=1 tribution, with a parameter t,j1 ,j2 which reflects · eYt,j1 ,j2 (Xj1 ,t -Xj2 ,t +F A) the `winning probability' determined by Xj1 ,t and (j1 ,j2 ) Xj2 ,t . Here, a multinomial distribution might be 1 an alternative choice, but it also introduces a · Xj1 ,t -Xj2 ,t +F A 1+e new tuning parameter which is hard to determine. (7) In (3), we model the odds of `winning probability' Take log, we get the log-likelihood function to be linear in Xj1 ,t and Xj2 ,t , because of the simplicity of its log-likelihood function. FA is 1 (Xi,t - lt = log(ct ) - 2 a constant representing the advantage of white 2i,t i player , taking value log( 56% ) since in the rating 44% k range of these players, white players' winning ¯ t-1 + (w0 X wl Xi,t-l ))2 probability is about 56% according to FIDE l=1 report. + Yt,j1 ,j2 (Xj1 ,t - Xj2 ,t + F A) The parameters in the model, the weights 2 wl 's and the noise variance i,t , are chosen to have the form wl = exp-l
+k+1 s=1 (j1 ,j2 )
+
+t,j1 ,j2 = Xj1 ,t - Xj2 ,t + F A 1 - t,j1 ,j2
+
+(3) Fitting - Newton Raphson's Method
+
+-
+(j1 ,j2 )
+
+log(1 + eXj1 ,t -Xj2 ,t +F A )
+
+(8)
+
+exp-l
+
+l = 1, 2, . . . , k
+k
+
+(4) It's easy to see the log-likelihood function is concave. To maximize it, we compute the gradient and Hessian (5) (6) gradi = lt Xi,t
+k
+
+w0 = 1 -
+l=1
+
+wl
+
+2 2 i,t = V ar(Xi,t-1 , Xi,t-2 , . . . , Xi,t-k ) + 0
+
+In(4), the weight is decreasing exponentially, which corresponds to the idea that historical ratings' influence on future games is decreasing exponentially. In (6), the noise variance includes a term that represents the stability of a player's rating. Note that the tuning parameters of this Hidden 2 Markov Process are k,  and 0 .
+
+1 ¯ = - 2 (Xi,t - (w0 Xt-1 + i,t +
+(i,j2 )
+
+wl Xi,t-l ))
+l=1
+
+Yt,i,j2 -
+(j1 ,i)
+
+Yt,j1 ,i
+
+-
+(i,j2 )
+
+eXi,t -Xj2 ,t +F A 1 + eXi,t -Xj2 ,t +F A eXj1 ,t -Xi,t +F A 1 + eXj1 ,t -Xi,t +F A (9)
+
++
+(j1 ,i)
+
+Page 2 of 5
+
+log likelihood
+
+Hi,j =
+
+log likelihood
+
+ 2 lt X X  i,t j,t X -Xj ,t +F A 2 e i,t  - 1 -  2 (i,j2 ) (1+eXi,t -Xj2 ,t +F A )2  i,t   X -Xi,t +F A  e j1 ,t  - i=j (j1 ,i) (1+eXj1 ,t -Xi,t +F A )2 = Xi,t -Xj,t +F A e   (i,j) (1+eXi,t -Xj,t +F A )2     + eXj,t -Xi,t +F A  i=j (j,i) (1+eXj,t -Xi,t +F A )2 (10)
+
+Tune K, given =0.2, =1
+-0.94 -0.95 -0.96 -0.97 -0.98 2 3 4 5 6 7 8 9 10 simulation fitting
+
+K Tune , given k=2,=1
+-0.9675 simulation fitting -0.968
+
+-0.9685
+
+Then we can apply Newton Raphson's Method to get the updated player ratings.
+log likelihood
+
+-0.969 0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1
+
+ Tune , given K=3, =0.2
+
+new old Xi,t := Xi,t - H -1 grad
+
+(11)
+
+-0.96 -0.965 -0.97 -0.975 -0.98 -0.985 0 0.2 0.4 0.6 0.8 1 1.2 1.4 simulation fitting
+
+At the start of the updating process, we initialize the ratings to be
+2 Xi,t  N (0, 0 ) t = -(k - 1), -(k - 2), . . . , 0 (12)
+
+
+
+Prediction
+Given the current ratings Xi and Xj of player i and j, we predict the game result Yi,j by computing P (Yi,j = 1 (white win))  i,j (13)
+
+Figure 1: Testing log-likelihood v.s Tuning parameters
+
+Results
+Success rates v.s Predicted winning probability
+1.0 Success rates 0.0 0.2 0.0 0.4 0.6 0.8
+
+P (Yi,j = 0.5 (draw))  C
+
+i,j (1 - i,j ) (14)
+
+P (Yi,j = 0 (white lose))  1 - i,j (15) where i,j is computed by (3) and constant C is set to be /8. Constant C is set such that the draw game probability agrees with the probability that a draw game appears in the training data set, which is roughlt 50%. We then pick the result with largest probability as our prediction.
+
+Picking tuning parameter
+In our model, we have 3 tuning parameters, 2 k,  and 0 that we have to specify before fitting the data. To pick them, we separate the data into training set and testing set, try 2 different combinations of k,  and 0 , and pick the combination with the largest log-likelihood for testing data. Figure 1 shows how testing log-likelihood changes with tuning parameters.
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+Predicted winning probability
+
+Figure 2: Success rates v.s `predict winning probability' 
+
+We applied our method to a data set of game results of 2000 chess players in 11 years. The data set was separated into 2 parts, game results of month 1 to 127 as the training set and results of month 128 to 132 as testing set. For the With this analysis, we pick k = 3,  = 0.2, training part, we fitted the training set to get the 2 0 = 1. player ratings. Then for testing part, each month
+
+Page 3 of 5
+
+we used the most recently updated ratings to probability'  when true result is `win', `draw' predict the game results, then the ratings were and `lose' as Figure 3. The figure clearly shows updated using the observed game results of this that  predicts the trend of true results. month. The success rate of prediction is 55.64%, which is much better than a random guess ( 33%, since result has `white win', `draw', `white lose' 3 cases). Also if we only look at the games with the case that both prediction and observed results are not `draw', the success rate of prediction is 85.73%, which implies that the prediction is reliable when ratings show one player dominates the other.
+
+Summary and Future Work
+
+As a summary, the overall performance of the Hidden Markov Process Model in predicting chess game results is satisfactory. Chess itself is a rather unpredictable game, especially if two players are close in rating performance and there are tons of games where lower rated players upset higher rated players. Therefore, a success rate of 55.64% given the three possible game To further illustrate the result, we plot outcomes is not a bad result. the success rates v.s `predict winning probability'  as Figure 2. We can see that when  is below From Figure 2 we can see that when the 0.1 or above 0.9, the success rate is very high, predicted winning probability  is near the which implies the confidence that when one threshold between a draw and win/lose game, the player dominates the other, our rating system prediction result is poor. In future work, a new is reliable. When  is between 0.4 and 0.6, the model to better predict the game results when success rate is around 60%, which makes sense player ratings' difference is near the threshold because for games between players with similar may be possible. In general, it is hard to predict ratings, most results would be `draw' which is game results in this edge case but a study of a consistent with our prediction but it's also likely large dataset of this particular type of games that `win' or `lost' happens. For  between 0.2 may help to establish a new model. Several and 0.4 (0.6 and 0.8), the prediction is poor, factors, including the two players' historical game because the result is on the edge of `lose' and results and trends, game time control, category `draw' ( or `win' and `draw'), which is difficult to of the tournament, chess opening preference and predict in nature. playing style, may be incorporated to better evaluate their individual winning probability.
+Box plot of Predicted winning probability
+
+Another further work that can be done is to compare our system with the prevailing Elo chess rating system adopted by FIDE. Accurate comparison needs careful calibration from the Elo system into our system but from an empirical points of view, our result should be no worse than Elo rating system. Much of the appeal of the Elo system comes from its simplicity and familiarity, and it was ideally suited to a time when the computation of ratings was a significant practical challenge even for an annual list of a win draw lose few hundred players. Elo's formula was derived theoretically, in an era without large amounts of Figure 3: Box plot of `predict winning probability' historical data or anything approaching today's computing power. With the benefit of powerful  computers and large game databases, we are able We also plot the box plot of `predict winning to investigate approaches that might do better
+Predicted winning probability 0.2 0.4 0.6 0.8 1.0
+
+Page 4 of 5
+
+than Elo at predicting chess results. Such an investigation could have major implications on the theory and practice of ratings methodology, both for chess and also for the world beyond chess.
+
+References
+[The USCF Rating System] Glickman, Mark E., and Thomas Doan. (2008). [Rating the chess rating system] Glickman, Mark E., and Albyn C. Jones. (1999). CHANCE-BERLIN THEN NEW YORK12 (1999): 21-28. [Hidden markov processes] Ephraim, Yariv, and Neri Merhav. (2002). Information Theory, IEEE Transactions on 48.6 (2002): 15181569. [FIDE Chess Rating Challenge] http: //www.kaggle.com/c/ChessRatings2 [Elo rating system] http://www.princeton. edu/~achaney/tmve/wiki100k/docs/Elo_ rating_system.html
+
+Page 5 of 5
+

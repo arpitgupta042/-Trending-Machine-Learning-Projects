@@ -1,0 +1,90 @@
+CS 229 Project report: Extracting vital signs from video
+D.Deriso, N. Banerjee, A. Fallou
+Abstract In both developing and developed countries, reducing the cost of medical care is a primary goal of science and government. In this project we seek to find and extract information from a video of a human that tells us the pulse rate and the oxygen level of the blood, with the eventual aim to create a virtual pulse oximeter. Features to be extracted were chosen to be related to the three color channel intensity values, with the idea that changing color of the video would relate to blood flow around the body. Extensive pre-processing was required on both the video data and the pulse oximeter data to enable training. Early results showed that feature selection was vital in reducing the mean-squared error of the output. At the end of this report, we outline further work to be done.
+
+1
+
+Introduction
+
+Cardiovascular health is the sin qua non of human life. Early detection of cardiovascular disease is of paramount importance in public health. This project aims to develop a method to visualize the perfusion of blood through the skin via pulse oximetry. Pulse oximetry is a technique that exploits the fact that oxygenated and deoxygenated hemoglobin changes the color of red blood cells. The technique maps these changes in RGB color of the visible skin to the invisible presence of oxygenated vs deoxygenated blood in the local vasculature underneath the skin. Our goal was to develop a process to obtain the pulse oximeter (SpO2) signal from a webcam. Ordinary webcams have limited spatial, temporal, and color resolution, that may make it difficult to detect the subtle changes in color necessary for accurate pulse oximetry. Furthermore, factors outside the webcam`s limitations, including between-subject variations in skin pigmentation and lighting conditions, introduce noise to the signal acquisition process. To overcome these obstacles, we focused on engineering rich features that could be used in standard learning models. The task was therefore to learn which combination of features best represented the weak SpO2 signal.
+
+2
+
+Eulerian Video Magnification
+
+A paper [1] by Wu et al. detailed a process known as `Eulerian Video Magnification'(EVM), whereby previously imperceptible signals were amplified such that they became visible to the naked eye. For example, by amplifying the red color channel in a [0.6-1.1]Hz band, EVM allows seeing the periodic blood flow on the face of a person in the frame. However, potential issues appeared when performing EVM on our own videos. We had time-periodic artefacts showing color fluctuations in unexpected regions. For example, part of the ceiling
+
+1
+
+D.Deriso, N. Banerjee, A. Fallou
+
+2
+
+Figure 1: Obtaining ground truth estimates from SpO2 values per image
+in the video would show a pulsating red color change at the frequency of the person's heart rate. Our pursuit of optimal features led us to extract the most relevant aspects of their pipeline, which included frequency selection and parallel treatments of different color channels. Moreover, the EVM process stipulates that the parameters for the color amplification had to be pre-determined, and we believed that would not play out well with our goal of being robust to lighting conditions and camera settings. We therefore wanted to relax the process such that those parameters did not need to be set manually. The EVM code provided convincing evidence that there exists information in a video from which a pulse signal can be extracted. We therefore decided to base our feature extraction techniques on those used in EVM. Further down the line, we hope to incorporate EVM more substantially into the project. We aim to map out the blood flow across the whole human body by amplifying the right color frequencies. Furthermore, we could use the spatial amplification of the EVM to show the physical motion of the skin as blood travels under it; the potential impact of early identification of poor blood circulation is large.
+
+3
+
+Preprocessing
+
+Video data
+The three color channel intensity values through time, IR (t), IG (t), IB (t) were converted into a four dimensional matrix of pixel location x and y, color channel and time. A Fourier transform was performed on the time course of each pixel. This FT was then binned to reduce the dimensionality of the features.
+
+Pulse Oximeter Data
+Pulse oximeter data was collected using an Arduino and a pulse oximeter connected to a laptop. A program was written that recorded the SpO2 data, simultaneously taking pictures every 50-80 ms on a webcam. This gave the SpO2 data corresponding to the image/video data. Thus we had many images taken over small time intervals with a corresponding pulse oximeter values (Figure 1). Further processing had to be done because the pictures were not taken uniformly in time and so computing a Fourier decomposition of the pixels taken from each image would
+
+D.Deriso, N. Banerjee, A. Fallou
+
+3
+
+not be correct. An interpolation was needed for images (to create a set of images with uniform time between them) and also for the pulse oximeter data to corroborate with the images. In order to accurately train our model, we also needed to bin the pulse oximeter values and be able to recreate the signal from the binned values so that they remained true to life.
+
+4
+
+Results and Discussion
+
+Initial results
+At first we took 10 bins over a 6Hz interval of the Fourier transform of each pixel. We outputted a binary vector, with a 1 if the binned value exceeded a threshold and a 0 otherwise. The binning involved with our initial results provided a coarse model and was in fact a very poor representation of the data. In particular, for each pixel the binary vector consisted of [1, 0, 0 ..., 0] which is exactly the same distribution we would expect for noise. Thus our weight matrix contained predominantly zeroes, as we were training to a predominantly zero vector. To increase the predictive power of the feature set, we increased the number of bins in the FFT, although limitations in our computational power meant that we were restricted to maximum 24 bins over the 6Hz interval. This applied to both the SpO2 value and the pixel's Fourier transform. We also included the phase terms and the pixel locations as further features (Figure 2). Our feature matrix, X, which contained the features for every training example, gave a matrix X T X with a very high condition number. This meant the normal equations were unusuable and so stochastic gradient descent was used.
+
+Results
+Features were extracted from each pixel over time, and included the pixels [i,k] location, the FFT of the pixels time course binned to 4 buckets per frequencies 0-6Hz [fq1, fq2, ..., fq24], and phase [ph1, ph2, ..., ph24]. Linear least squares regression models were trained on the combination of features listed in Table 1. These results suggest that each of the features, frequency, phase, and pixel location; play a role in the prediction. Furthermore, the least error was obtained when all three features were used (MSE =0.00884), followed by just frequency and pixel (MSE=0.00903), and pixel location (MSE=0.0117). As expected, for a single video, with numerous pixels serving as training examples, the residuals were low. The main limitation on our method is the encoding process used for reducing the dimension of the training data into features. As can be seen in Figure 2 (bottom graph)
+
+D.Deriso, N. Banerjee, A. Fallou
+
+4
+
+Figure 2: The pre-processing steps
+reconstructing a given signal from its feature set is a lossy process. This in turn increases the noisiness on our predicted signal (Figure 3).
+
+5
+
+Conclusions
+· We built a data collection program that recorded a series of images and SpO2 readings for those images. · Using a binned Fourier Transform, we could efficiently reduce the video data to a finite dimensional feature space and perform regression on it. · Increasing the variety of features included in the video reduced our mean squared error in the linear regression.
+
+D.Deriso, N. Banerjee, A. Fallou
+
+5 Frequency × MSE 0.0088 0.11 0.0090 0.12 0.012 0.75 0.012 Max cross correlation 0.0936 0.0943 0.0936 0.0943 0.0936 0.0967 0.0936
+
+Pixel location
+
+Phase
+
+× × × × ×
+
+× ×
+
+×
+
+Table 1: Results of different feature selections with corresponding mean-squared error between predicted and input signal and maximum cross correlation
+
+Figure 3: The predicted signal in bold and the actual signal in grey
+
+6
+
+Further Work
+
+We hope to incorporate EVM more broadly into the project and use more robust features. Using short-time discrete wavelet transform the acquisition window can be shortened such that we can create a real-time application.
+
+References
+[1] Hao-Yu Wu, Michael Rubinstein, Eugene Shih, John Guttag, Fr´do Durand, and e William T. Freeman. Eulerian video magnification for revealing subtle changes in the world. ACM Transactions on Graphics (Proc. SIGGRAPH 2012), 31(4), 2012.
+

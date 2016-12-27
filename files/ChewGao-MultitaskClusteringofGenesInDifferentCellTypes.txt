@@ -1,0 +1,102 @@
+Multitask Clustering of Genes in Different Cell Types
+Hong En Chew & Linyi Gao
+
+1
+
+Introduction
+
+Understanding the behavior of a complex network of genes within an organism remains a challenging question in biology. Higher organisms may have tens of thousands of genes interacting and self-regulating in complex ways, and sophisticated regulatory mechanisms are prevalent ­ for instance, to maintain homeostasis, trigger responses to environmental stimuli, or repair cellular damage. In such a complex setting, elucidating underlying patterns is essential to our understanding of biological mechanisms and to developing therapies to combat disease. The behavior of genes is thought to be highly related to their expression levels, that is, the RNA and proteins created within a cell using genes as a blueprint. Standard microarray technology can now quantitatively measure the expression of more than 20,000 genes in a sample simultaneously. This abundance of data provides a unique opportunity to apply analytical methods in machine learning to deduce underlying genetic patterns. A gene network may be better understood by separating the genes into clusters that have similar functions or are associated with a common underlying regulatory mechanism, e.g. those that correspond to a biochemical pathway. For example, clustering may provide insight into how genes give rise to complex traits [1]. A major challenge with learning gene clusters, however, is that any expression data obtaining from a single specimen is subject to the individual genetic biases specific to that specimen. This represents a source of noise in the sample. In addition, expression profiles of genes may manifest differently in different cell types. This problem may be addressed by analyzing profiles from (a) genetically diverse specimens; and (b) a variety of cell types. This work explores (a) to what extent the functions of an individual gene can be learned from its expression profile; and (b) what underlying patterns can be learned about the underlying network of genes by analyzing all genes. Specifically, we examine the mouse and analyze expression profiles in two different cell types simultaneously. We implemented a recently-developed clustering algorithm ­ the hierarchical Dirichlet process (HDP) model [2] ­ that allows for clustering in multiple data sets. In addition, we evaluated the support vector machine, more traditional clustering methods, and methods of dimensionality reduction.
+
+2
+
+Data & Feature Selection
+
+Our training set consisted of gene expression data for 25,134 genes in 39 genetically diverse mice strains. Cellular levels of mRNA, as measured by RNA microarrays, were used as a proxy for the activity of regulatory proteins [1]. For each mice strain, the gene expression levels were recorded for two types of immune cells - T4 cells and monocytes. Although the gene expression levels of an individual organism is unlikely to be informative, when expression data from a genetically diverse group of individuals is simultaneously analyzed, the subtle perturbations in gene expression levels can reveal underlying gene clusters [1]. We preprocessed the expression data for each gene in each cell type by normalizing it to have zero mean and unit variance. To assess the biological relevance of the clustering results, we used gene function data for 13,476 cellular functions obtained from the Gene Ontology (GO) database [3]. Learned clusters were
+
+
+We would like to thank Dr. David Knowles and Dr. Sara Mostafavi (computer science) for their guidance in this project.
+
+1
+
+Figure 1 ­ PCA analysis for T4 cells (left) and monocytes.
+
+compared with the known biological functions of these genes to assess how much each model was able to learn functional patterns from expression data.
+
+3
+
+Selection of Learning Methods
+
+We applied three main classes of learning methods to this problem. We first trained a linear SVM on the data supervised by GO data. We then applied principal component analysis (PCA) and a sparse variant of PCA to reduce the dimensionality of the data and visualize its underlying structure. Finally we applied k­ means and two related algorithms ­ the Dirichlet Process (DP) mixture model and the hierarchical Dirichlet Process (HDP) to cluster the data. In particular, the HDP is a novel multi-tasking approach to clustering using data from both cell types [2].
+
+3.1
+
+Support Vector Machine
+
+Gene ontology indicated that while the average number of genes that perform a particular function is 10.5, a small number of function classes involved 6000 to 8000 genes. By using the GO data for each of these widely-prevalent functions as a set of binary labels indicating whether a gene was involved in that function, we sought to use a supervised learning algorithm to predict if a gene would perform a particular function based on its expression levels across the mice strains. We identified the three classes of functions with the most number of genes involved ­ `membrane', `nucleus', and `protein binding' - and trained a linear SVM [4] on the gene expression data for each function. We performed holdout (0.3) cross-validation and obtained a classification accuracy of 58% for the T4 cell data and 59% for the monocyte data, for the `membrane' function class. Similar results with classification accuracies of about 60% were obtained for the other two functions. To verify our results, we compared the SVM classification accuracy against a simple model which effectively performed a coin toss for each gene and assigned it a positive label with probability p, where p is the empirical probability from the GO function data that a given gene performs that particular function. For the `membrane' function class, the random model also obtained about 60% classification accuracy, which indicates the linear SVM classifier is no better than a biased coin toss on this dataset. As supervised learning might not be the best approach for this dataset, we focused on applying unsupervised dimensionalityreduction and clustering algorithms to elucidate the underlying structure of the gene expression data.
+
+2
+
+Figure 2 ­ SPCA analysis for T4 cells and monocytes (simultaneous analysis), with 2, 5, and 10 (left to right) non-zero loadings.
+
+3.2
+
+Principal Component Analysis
+
+We performed PCA on the gene expression data and projected the data onto the first two principal components (Figure 1). For both cell types, the first PC had positive coefficients for all 39 variables, while the second PC had positive coefficients for about half the variables. The T4 cell and monocyte data had a highly similar structure with the first principal component (PC) explaining 98.8% and 98.4% of the variance, respectively, and the second PC explaining 0.15% and 0.29% of the variance, respectively. This may indicate that most of the mice strains have a very similar gene expression profile with respect to the mean expression levels across all mice strains, and that immune cell type does not affect gene expression levels significantly.
+
+3.3
+
+Sparse Principal Component Analysis
+
+Although the PCA results reveal an underlying structure to the gene expression data, it is difficult to interpret the results as each PC is a linear combination of all 39 variables and the loadings are mostly nonzero. Sparse principal component analysis (SPCA) seeks to reduce the number of explicitly used variables by limiting the number of nonzero loadings for each PC [5]. We performed SPCA on the same data set and varied the number of nonzero loadings (Figure 2). When projected onto the first two PCs, the structure of the data remains qualitatively the same, with most of the variance explained by the first principal component. In this case, dimensionality-reduction alone is insufficient to enable us to interpret the structure of the gene expression data. Our next step was to apply different clustering algorithms to the data.
+
+3.4
+
+k-means and Dirichlet Process (DP) Clustering
+
+As a heuristic for assessing clustering, we performed k-means and Dirichlet process (DP) [2] clustering on T4 and monocyte data separately for a range of k. We then compared the cluster assignments of genes to the clusters obtained with k-means on the GO data. In order to match the cluster sets obtained from cellular data with those obtained from GO data, we ran an exhaustive-search match for all k! cluster permutations for k  8 and a greedy match for k > 8. We then calculated the total number of common elements between cluster sets. If the data sets are independent, the total number of common elements can be approximated as the sum of n Bernoulli random variables, each with probability p = 1/k. By the central limit theorem, this number 1 1 can be approximated as being drawn from N n ,  2 , where  2 = n k 1 - k . To assess the quality of k clustering as function of the number of clusters k, we computed the sum of the number of elements common to each cluster in expression data and the corresponding "gold standard" cluster in the gene ontology data. For each k evaluated, we also calculated the number of standard deviations above the mean number of common clusters expected for independent data. The analysis indicated that a cluster number of k = 5 resulted in the best-fit clustering (Figure 3, left). Clustering above k = 50 was difficult to evaluate because of the large size of the gene ontology data set (over 13,000 binary functions for each gene) resulted in very long run times. We also evaluated the normalized mutual information (NMI) as a metric for cluster similarity
+
+3
+
+Figure 3 ­ Clustering results.
+
+(Fig. 3, right; calculated for the first 1000 genes). However, NMI did not suggest an optimal cluster size, as the growth of NMI with cluster number is expected [6].
+
+3.5
+
+Hierarchical Dirichlet Process Clustering
+
+The hierarchical dirichlet process (HDP) clustering algorithm, recently developed by Kulis et al. [2], allows for shared clusters of data across multiple data sets (Fig. 4). The elements of each data set are partitioned in `local clusters,' each of which is associated with a `global cluster.' Each global cluster consists of one or more local clusters, thus allowing for shared clustering. This method is uniquely suited to our data set because it allowed us to simultaneously ana- Figure 4 ­ Illustration of HDP clustering, from lyze T4 cells and monocytes. [2]. Clusters are optimized based on a local penalty parameter, g , and a global penalty parameter, l and minimizes the objective
+g {lp }p=1
+
+min g
+
+||xij - µp ||2 + l k + g g 2
+p=1 xij lp
+
+where
+
+µp =
+
+1 |lp |
+
+xij
+xij lp
+
+and k is the total number of local clusters. We developed our own implementation of the HDP algorithm in MATLAB. To select the cluster penalty parameters that approximately gave a cluster number k, we used a farthest-first heuristic [2]. Clusters were calculated for the first 1000 genes in order to reduce the computation time (we estimate that running the HDP algorithm for the full data set would take up to a month). Convergence took an average of 50 iterations. Results are shown in Figure 5.
+
+4
+
+Conclusions and Further Direction
+
+Dimensionality-reduction with PCA and SPCA reveal an underlying structure in the gene expression data that is highly non-random. Although the linear SVM only performed as well as a random model in predicting gene function from expression levels, the unsupervised clustering algorithms produced results that were nonrandom when assessed against the GO data. However, the overall lack of strict correspondence between individual gene function and mRNA expression levels suggests that the underlying biology of regulatory networks of mouse genes cannot be partitioned into strictly separate clusters. Indeed, we hypothesize that deeper underlying regulatory mechanisms are at play. As our current clustering algorithms are unable to take into account that a single gene is likely to belong to multiple functional clusters, alternative methods that allow for soft cluster assignments such as dictionary learning or a multivariate Gaussian mixture model may provide biologically more realistic models of gene behavior.
+
+4
+
+Figure 5 ­ HDP-optimized gene clusters plotted by color onto PCA results. Top left: l = 0.95, g = 10. Top right: l = 1, g = 10. Bottom left: l = 1, g = 20. Bottom right: l = 1, g = 50. For each of the four plots, the upper subplot represents the T4 cells, and the lower subplot represents the monocytes. Under optimal HDP clustering, no shared clusters were observed.
+
+References
+[1] Lee SI, Dudley AM, Drubin D, et al. Learning a prior on regulatory potential from eQTL data. Plos Genetics 2009; 5: 1-23. [2] Kulis B & Jordan MI. Revisiting k-means: new algorithms via Bayesian nonparametrics. ArXiv preprint, 2013. [3] The Gene Ontology. http://www.geneontology.org/. [4] LIBLINEAR ­ A Library for Large Linear Classification. http://www.csie.ntu.edu.tw/ cjlin/liblinear/. [5] Zou H, Hastie T, & Tibshirani R. Sparse principal component analysis. J. Comput. Graph. Stat. 2006; 15: 265-286. [6] Vinh, NX, Epps J, & and Bailey J. Information theoretic measures for clusterings comparison: variants, properties, normalization and correction for chance. Journal of Machine Learning Research 2010; 11: 2837-2854. [7] Savage R, Ghahramani Z, Griffin JE, Kirk P, & Wild DL. Identifying cancer subtypes in glioblastoma by combining genomic, transcriptomic and epigenomic data. ArXiv preprint, 2013.
+
+5
+

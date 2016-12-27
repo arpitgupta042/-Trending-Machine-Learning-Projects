@@ -1,0 +1,257 @@
+Max-Margin Models for RNA Secondary Structure Prediction
+
+Clara Fannjiang
+
+clarafj@stanford.edu over a set of combinatorial structures, as well as a tractable method for the finding the structure with the maximum score. In our problem, we predict a binary label for each edge in the complete graph, where a label of "1" means that base-pair exists in the secondary structure and a label of "0" means it does not. Label interdependence arises not only from the matching constraint, but also from local interactions between basepairs that occur in common structural motifs. We hope to solve our structured prediction problem by learning a max-margin model, a generalization of the support vector machine (SVM). 1.2. Max-Margin Models for Structured Prediction (MMSP) The intuition behind an SVM is to learn the decision boundary that maximizes the separation between different labels. As a generalization, a max-margin model learns a scoring function that maximizes the separation between the score of the true structure and the score of any other structure. Let X be the space of RNA sequences and let Y = xX Y(x) be the space of possible secondary structures, where Y(x) is the space of possible secondary structures (or graph matchings) for the sequence x  X . We parameterize the scoring function s(x, y) as a linear combination of n features, such that s(x, y) = w f (x, y) where f : X × Y  Rn is the feature function. Given m training instances (x(i) , y(i) ), i = 1, . . . , m, our constrained optimization problem is 1 min ||w||2 w 2 s.t. i, y  Y(x(i) ), w f (x(i) , y(i) )  w f (x(i) , y) + (y(i) , y) where the constraints ensure that the "margin" of the score of y(i) over the score of any other structure y is at least (y(i) , y), the loss of predicting y over the desired y(i) . By adding slack variables  to ensure that the constraints are feasible, and maximizing over the possible structures to get a single constraint per training instance, we have  min ||w||2 + w, 2 i
+i
+
+1. Introduction
+RNA was first explored and understood as a messenger molecule, relaying DNA encodings of amino acids during protein synthesis. Beyond messenger RNA, however, a class of RNA known as non-coding RNA plays fundamental roles in transcriptional and translational gene regulation. As the biological mantra goes, form fits function, and these regulatory roles depend on the 3-D structure of the RNA molecule. The 3-D structure is largely induced by the secondary structure, or the base-pairs of the RNA sequence--unlike DNA, whose complementary strands are fully paired, RNA is single-stranded and displays complex patterns of basepairs. As empirical methods for finding RNA structure, such as crystallography, are time-consuming and involve expensive equipment and expertise, computational methods for predicting RNA secondary structure are of great value to the study of non-coding RNA. 1.1. RNA Secondary Structure Prediction as a Structured Prediction Problem Since each base in a sequence can only pair with one other base, it is natural to model RNA secondary structure as a graph matching. Each node of the graph corresponds to a base, and each edge corresponds to a base-pair that exists in the secondary structure. Given an RNA sequence, or the nodes of a complete graph where each edge corresponds to a possible base-pair, we approach secondary structure prediction as the problem of deducing the true matching. Biologically speaking, the true or most stable secondary structure is the one that minimizes free thermodynamic energy. To incorporate this concept into the graph model, we design some scoring function over all possible matchings, such that a higher score corresponds to a more stable secondary structure. Finding the true secondary structure is then be equivalent to finding the matching that maximizes the scoring function. RNA secondary structure prediction is thus an instance of a structured prediction problem. Structured prediction arises when we predict not a single label, but rather a set of many interdependent labels. A structured prediction problem involves a scoring function
+
+Max-Margin Models for RNA Secondary Structure Prediction
+
+Algorithm 1 Subgradient calculation for MMSP objective (from [1]) Input: w, {(x(i) , y(i) )}m , : Y × Y  R, f : X × i=1 Y  Rn . Initialize w = 0. for i = 1 to m do y(i) = arg max w f (x(i) , y) + (y(i) , y)
+yY(x(i) )
+
+w = w + f (x(i) , y(i) ) - f (x(i) , y(i) ) end for 1 w = m  w
+
+distance between the two bases; the probability of the base-pair as computed by Mfold, a model that approximates the free energy of secondary structures using empirically measured energies of structural motifs; and indicators on the identity of the two bases, 1[bases are A-A], 1[bases are A-C], . . . , 1[bases are U-U]. (Incorporating information from other predictors, such as Mfold, is not uncommon and is justified if the model outperforms the input predictors [2].) To calculate the max-score structure y for the MMSP objective subgradient in Alg. 1, we simply calculate the score of each edge sedge (x, yj ) = w fedge (x, yj ) and run Edmonds' blossom algorithm to find the max-weighted matching y . We trained the single base-pair matching model on TrainSetB, a set of 1061 highly diverse RNA sequences and known structures designed in [4]. The model was tested on TestSetB, a set of 428 sequences and structures designed in the same paper. We compared the predictions to those made by Mfold, one of the oldest RNA secondary structure prediction methods, often seen as a baseline for performance. The mean Matthews correlation coefficient (MCC) of the predictions (0.204398) beats the mean MCC of the Mfold predictions (0.183955), where the MCC can be understood as the correlation between the true and predicted binary labels on the edges: M CC = TP × TN - FP × FN (T P + F P )(T P + F N )(T N + F P )(T N + F N )
+
+s.t. i, w f (x(i) , y(i) )  w f (x(i) , y(i) ) + (y(i) , y(i) ) - i , y(i) = arg max f (x(i) , y) + (y(i) , y),
+yY(x(i) )
+
+where the regularization parameter  tunes the emphasis on maximizing the margin over obeying the constraints. Since the constraints are active at the optimum, we substitute them into the objective to get the unconstrained optimization problem min J(w) where
+w
+
+ J(w) = ||w||2 + 2 (w f (x(i) , y(i) ) + (y(i) , y(i) ) - w f (x(i) , y(i) )).
+i
+
+2. Methods
+2.1. Subgradient Method for MMSP We minimize the MMSP objective J(w) using the subgradient method, a generalization of gradient descent to non-differentiable convex functions. [3] gives Alg. 1 for calculating a subgradient of the MMSP objective. Note that the algorithm involves computing the max-score structure y(i) , which becomes the bottleneck for implementation: we must design f (x, y) to be complex enough, such that the scoring function s(x, y) = w f (x, y) captures the many factors involved in structure stability, yet it must be simple enough that computing (or approximating) y(i) is tractable. 2.2. Single Base-Pair Matching One of the simplest ways to parameterize s(x, y) is to define features fedge (x, yj ) for each edge yj in the matching y, and let the score of the matching simply be the sum of the scores of the edges in the matching: s(x, y) = w f (x, y) = w fedge (x, yj ). We
+j
+
+where TP, TN, FP, and FN are the numbers of true positive edges, true negative edges, false positive edges, and false negative edges, respectively. However, the single base-pair matching model is inherently limited as it neglects how interactions between base-pairs influence the stability of structures. To incorporate such interactions, the scoring function s(x, y) needs to capture the scores of local structural motifs, not just the scores of isolated base-pairs. One strength of the single base-pair matching model that the successor model lacks is that the calculation of the max-score structure y is both tractable and exact. By making the scoring function more complex, we forgo our ability to calculate an exact subgradient as given in Alg. 1, and resort to a tractable approximation instead. 2.3. Greedy Stack Matching (GreedyStacks) A prevalent motif in RNA secondary structures is stacking base-pairs, where base-pairs form adjacent to each other. Analogous to the pairing of complementary DNA strands, stacking base-pairs are key to the sta-
+
+defined the features of an edge, or base-pair, as the
+
+Max-Margin Models for RNA Secondary Structure Prediction
+
+bility of RNA secondary structures, and are the next focus in enriching the scoring function s(x, y). We redefine the graph model of the RNA sequence, such that each node represents two adjacent bases and each edge represents a possible "stack", or two adjacent basepairs. Note that this model cannot express isolated base-pairs, which are rarely observed due to the stability of stacking. Fig. 1 illustrates how the stack matching model expresses a sub-structure.
+
+Algorithm 2 Greedy approximation of max-score structure Input: w, (x, y), : Y × Y  R, fstack . Define a complete graph where each node represents two adjacent bases in x, and the score of each edge m is sstack (x, m) = w fstack (x, m). Run Edmonds' blossom algorithm for the maxweighted matching M. Sort the edges m  M by decreasing score.  Initialize the greedy approximation ygreedy = . for each edge m  M do  if m does not conflict with edges in ygreedy then   ygreedy = ygreedy  m end if end for
+
+Figure 1. Example of a stack graph matching (right) modeling a sub-structure with stacking base-pairs (left).
+
+machine learning prediction methods; the probability of the outer base-pair as computed by CONTRAfold; and indicators on the identity of the bases in the stack, 1[bases are AA-UU], . . . , 1[bases are UU-GG]. For computational efficiency, we eliminated all edges in the stack graph involving non-canonical base-pairs, or base-pairs other than A-U, C-G, or G-U.
+Objective Throughout Learning
+49
+
+Objective
+
+Here, a matching y represents the set of stacks in the secondary structure. As in the single base-pair matching model, we then define the features fstack (x, yj ) for each edge or stack, and let the score of a matching be the sum of the scores of the edges in the matching: s(x, y) = w f (x, y) = w fstack (x, yj ).
+j
+
+48
+
+47
+
+46
+
+Note that the max-score structure y is no longer the max-weighted matching, since a matching of the stack graph may not be a valid matching of the single-base graph. Once the "CA-UG" stack exists in Fig. 1, for instance, the adjacent "AC" node cannot be paired since the "A" base has already been paired with the "U" base (and similarly for the "GU" node). In fact, as proven in [5], the calculation of the max-score structure y(i) = arg max w f (x, y) + (y(i) , y) is NP-hard
+yY(x(i) )
+
+45
+
+44
+
+43
+
+42
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+2500
+
+3000
+
+3500
+
+4000
+
+Iterations of Subgradient Method
+
+for f (x, y) =
+j
+
+fstack (x, yj ). We calculate the greedy
+
+Figure 2. Value of the MMSP objective through iterations of the (approximate) subgradient method.
+
+ approximation ygreedy described in Alg. 2 instead, and   replace y with ygreedy in Alg. 1.
+
+The features of an edge, or stack, are the distance between the bases of the inner base-pair; a lengthdependent intercept #bases , where 500 was the max500 imum sequence length observed in the training set; the probability of the inner base-pair as computed by CONTRAfold, currently one of the best-performing
+
+2.4. Pseudoknots Here, we note that our graph model lends us a unique advantage in RNA secondary structure prediction. We focus on structures that involve pseudoknots, a structural motif where base-pairs are not properly nested
+
+Max-Margin Models for RNA Secondary Structure Prediction
+0.6 0.5 0.4 0.3 0.2 0.1 0
+
+Feature Weights
+
+3. Results
+Fig. 5 compares the predictions made on TestSetA by IPknot and GreedyStacks, and reveal that GreedyStacks slightly outperforms IPknot in mean F-measure as well as MCC. The sensitivity vs. positive prediction value trade-off, shown in Fig. 6, shows that though GreedyStacks does slightly worse in PPV, it has an almost 15% advantage over IPknot in sensitivity.
+IPknot vs. GreedyStacks on Pseudoknotted Structures
+
+-0.1
+
+-0.2
+
+distance L-D intercept CONTRAfold outer CONTRAfold inner AAUU ACGU AGCU AGUU AUAU AUGU CAUG CCGG CGCG CGUG CUAG CUGG GAUC GAUU GCGC GCGU GGCC GGCU GGUC GGUU GUAC GUAU GUGC GUGU UAUA UAUG UCGA UCGG UGCA UGCG UGUA UGUG UUAA UUAG UUGA UUGG
+
+-0.3
+
+1
+
+1
+
+0.9
+
+0.8
+
+0.8
+
+0.6
+
+GreedyStacks F-Measure
+
+0.7
+
+0.4
+
+0.6
+
+GreedyStacks MCC
+0 0.2 0.4 0.6 0.8 1
+
+0.2
+
+Figure 3. Learned weights of the GreedyStacks features.
+
+0.5
+
+0
+
+0.4
+
+-0.2
+
+0.3
+
+-0.4
+
+and "cross over" one another (Fig. 4). CONTRAfold and most other RNA secondary structure prediction methods are unable to express pseudoknots, as they rely on the nested-ness of base-pairs to express structures recursively. Pseudoknots have thus become important special case of RNA secondary structure prediction. Unlike CONTRAfold, our stacked basepair matching model make no assumptions about the nested-ness of base-pairs: there are no distinctions between pseudoknotted and non-pseudoknotted edges in the graph. To tune our model for pseudoknots, we train and test GreedyStacks only on pseudoknotted structures and compare the predictions to those made by IPknot, currently one of the best-performing prediction methods for pseudoknots [6].
+
+0.2
+
+-0.6
+
+0.1
+
+-0.8
+
+0
+
+-1 -1
+
+-0.5
+
+0
+
+0.5
+
+1
+
+IPknot F-Measure
+GreedyStacks (Mean 0.699524) > IPknot (Mean 0.669821) GreedyStacks (Mean 0.699524) < IPknot (Mean 0.669821) y=x
+
+IPknot MCC
+GreedyStacks (Mean 0.371437) > IPknot (Mean 0.352080) GreedyStacks (Mean 0.371437) < IPknot (Mean 0.352080) y=x
+
+Figure 5. F-measure (left) and Matthews correlation coefficient (right) of TestSetA predictions made by IPknot and GreedyStacks.
+
+4. Future Work
+We are currently working on a model that incorporates scores over pseudoknots, not just scores over basepair stacks. Again, there is no tractable algorithm like the Edmonds' blossom algorithm for finding the maxscore structure in such a model. Instead, we define the scores over pseudoknots as higher-order potentials over a Markov random field, then implement dual decomposition as described in [1] to approximate the maxscoring structure.
+
+Figure 4. Example of a pseudoknot, where the A-U basepairs "cross over" the C-G base-pairs.
+
+The regularization parameter  in GreedyMatch also has not been tuned. We are currently running 5-fold cross validation to tune this parameter, which may further increase the accuracy of its predictions.
+
+We created the pseudoknotted TrainSetA and TestSetA by combining the three highly diverse sets cited in [6], and randomly selecting 100 sequences for the testing set.
+
+5. Acknowledgements
+Many thanks to my mentors Cristina Pop and ChuanSheng Foo at the Stanford AI Lab for their guidance.
+
+Max-Margin Models for RNA Secondary Structure Prediction
+1
+
+0.9
+
+[7] Taskar, B., Chatalbashev V., Koller, & Guestrin, C. (2005). Learning structured prediction models: A large margin approach. Proc. of the 22nd ICML, 896-903.
+
+0.8
+
+0.7
+
+0.6
+
+PPV
+
+0.5
+
+0.4
+
+0.3
+
+0.2
+
+0.1
+
+0
+
+0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+1
+
+Sensitivity IPknot Sensitivity vs. PPV GreedyStacks Sensitivity vs. PPV Mean IPknot Sensitivity (60.45%) and PPV (72.01%) Mean GreedyStacks Sensitivity (74.90%) and PPV (65.53%)
+
+Figure 6. Sensitivity vs. PPV of TestSetA predictions made by IPknot and GreedyStacks.
+
+References
+[1] Komodakis, N. (2011). Efficient training for pairwise or higher order CRFs via dual decomposition. Proc. of the 22th IEEE CVPR, 1841-1848. [2] Notredame, C., Higgins, D.G., and Heringa, J. (2000). T-Coffee: A novel method for multiple sequence alignments. JMB, 302, 205-217. [3] Ratliff, N., Bagnell, J., & Zinkevich, M. (2007). (Online) subgradient methods for structured prediction. Proc. of the 11th AIStats. [4] Rivas, E., Lang, R., Eddy, S. (2012). A range of complex probabilistic models for RNA secondary structure prediction that includes the nearestneighbor model and more. RNA, 18, 193-218. [5] Sheikh, S.I., Backofen, R., and Ponty, Y. (2012) Impact of the energy model on the complexity of RNA folding with pseudoknots. Proc. of the 2012 CPM. [6] Sato, K., et al. (2011). IPknot: fast and accurate prediction of RNA secondary structures with pseudoknots using integer programming. ISMB, 27, 85-93.
+

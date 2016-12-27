@@ -1,0 +1,298 @@
+CS229 - Measuring Tissue Contact Force for Continuum Robot
+Clifford N. Bargar, Riley J. Shear Department of Mechanical Engineering Stanford University Stanford, CA 94305 {cbargar, rshear} @stanford.edu
+
+I. I NTRODUCTION
+
+We are investigating potential applications of machine learning algorithms to medical robotics, particularly involving steerable end effectors operating within human tissues and organs. In many situations, it is important to know whether or not a particular instrument is freefloating or if it is in contact with tissue, with catheter-based ablation within the heart being one motivating example. For some applications, including that of ablation, it would also be very helpful to know the magnitude of the contact force between the tool and the tissue. We are working with members of the Camarillo Lab (Stanford Bioengineering) and CHARM Lab (Stanford Mechanical Engineering) to collect data and evaluate the methods we've learned in CS229 for analysis. Initial results have been a valuable learning experience, and we are confident that a valuable tool can be developed with this system. Results have been very promising, indicating a highly accurate force feedback system and a
+
+reliable means for detecting tissue contact without instrumentation on the surface of the catheter itself.
+II. E XPERIMENTAL S ETUP
+
+Fig. 1.
+
+Experimental setup
+
+The apparatus is composed of two main elements: the end effector and the sample tissue. The end effector is composed of a prototype continuum robot manipulator (courtesy of Michael Yip) with a lowpower vibrational motor providing an input vibration.
+
+Duty cycle 65/255 200 raw acceleration values 100 0 -100 -200 -300 raw acceleration values 200 100 0 -100 -200 -300 -400 0 0.1 0.2
+
+Duty cycle 85/255
+
+An Analog Devices ADXL345 3-axis digital accelerometer is fixed to the same link as the vibration generator, collecting the acceleration data used in our analysis. Data points are collected at a rate of 1600Hz over the I2C communication protocol by an Arduino Mega 2560, which stores blocks of 700 points before sending the data to the computer over the serial line. This setup is shown in Figure 1. Each sample consists of four separate series of varying motor speeds. For the first series the motor is run at a duty cycle of 65 out of 255, followed by duty cycles of 85, 105, and 125. Additionally, the contact force applied to the load cell corresponding to each sample is recorded. The contact force for the sample's duration is maintained at 0mN, 250mN, 500mN, 750mN, 1000mN, or 1,250mN. The 0mN force also corresponds to the non-contact condition, while all nonnegative occur only when the end-effector is in contact with the load cell. A total of 117 trials were completed spanning these contact levels.
+III. F EATURE E XTRACTION
+
+0
+
+0.1
+
+0.2
+
+0.4 0.5 time (seconds) x-axis y-axis
+
+0.3
+
+0.6 x-axis
+
+0.7
+
+0.8
+
+0.3 x-axis
+
+0.4 0.5 time (seconds) y-axis
+
+0.6 x-axis
+
+0.7
+
+0.8
+
+Duty cycle 105/255 200 raw acceleration values raw acceleration values 100 0 -100 -200 -300 -400 0 0.1 0.2 0.3 x-axis 0.4 0.5 time (seconds) y-axis 0.6 x-axis 0.7 0.8 400
+
+Duty cycle 125/255
+
+200
+
+0
+
+-200
+
+-400
+
+0
+
+0.1
+
+0.2 x-axis
+
+0.3 0.4 time (seconds) y-axis
+
+0.5 x-axis
+
+0.6
+
+0.7
+
+Fig. 2.
+
+Experimental data, 0N contact force
+
+tudes and their corresponding frequencies as the features for each vibration test, of which four (one for each vibration speed) composed each force measurement sample. This resulted in 24 total native features, which was manageable given the computing resources available.
+4 3 2 1 0
+6 load: 1000 PWM level: 65 x 10
+
+8 6 4 2 0
+
+6 load: 1000 PWM level: 85 x 10
+
+0
+
+20
+
+40
+
+60
+
+0
+
+20
+
+40
+
+60
+
+3
+
+7 load: 1000 PWM level: 105 x 10
+
+4 3 2
+
+7 load: 1000 PWM level: 125 x 10
+
+2
+
+1
+
+1 0
+
+0
+
+The collected time-series acceleration data was run through a MATLAB-based Fast Fourier Transform (FFT) to extract the most dominant vibrational modes for each test sample. An example data point and an example FFT are shown in Figures 2 and 3, respectively. Because many of the samples resulted in three primary frequency peaks, it was decided to use the top three magni-
+
+0
+
+20
+
+40
+
+60
+
+0
+
+20
+
+40
+
+60
+
+Fig. 3.
+
+FFT showing features
+
+IV. C LASSIFICATION
+
+An initial analysis was performed to attempt to classify each data point as either contact (0N force) or non-contact (any
+
+nonzero force). To find the best results both a logistic regression algorithm and a support vector machine (using LIBLINEAR [1]) were trained; both algorithms have performed very well. With the full data set split into a training set (one third) and a testing set (two thirds), both algorithms have achieved accuracies of 90% to 96% on the testing set while successfully classifying the entire training set the majority of the time. For a single random partition of the data set the results of the SVM are shown in 4 and those of the Logistic Regression in 5.
+SVM:3 misclassifications,3.8462% testing error 35 Training set - correct Testing set - misclassified Testing set - correct
+
+Logisitic regression:4 misclassifications,5.1282% testing error 35 Training set - correct Testing set - misclassified Testing set - correct
+
+30
+
+25 Sample number
+
+20
+
+15
+
+10
+
+5
+
+0
+
+0
+
+200
+
+400
+
+600 Load (mN)
+
+800
+
+1000
+
+1200
+
+Fig. 5.
+
+LR Performance
+
+30
+
+25 Sample number
+
+20
+
+those of a linear fit are shown in Figures 7 and 8, respectively. It is clear from this data that a quartic fit does a reasonably good job of predicting the force value based on the selected features.
+Error on H2OCV for polynomial regression 9
+
+15
+
+10 8
+
+5
+
+0
+
+0
+
+200
+
+400
+
+Log of error
+
+600 Load (mN)
+
+800
+
+1000
+
+1200
+
+7
+
+6
+
+Fig. 4.
+
+SVM Performance
+
+5
+
+V. P OLYNOMIAL R EGRESSION - D ETERMINING C ONTACT F ORCE
+
+4
+
+3
+
+A polynomial regression was implemented to create predictions of the force level for each data point. In order to determine the appropriate order polynomial to use, a hold-two-out cross validation was performed. This analysis, shown in Figure 6, indicates that a quartic fit performs best on this data. The results of a quartic fit and
+
+1
+
+2
+
+3
+
+4 5 6 Degree of polynomial model
+
+7
+
+8
+
+Fig. 6.
+
+Model selection - hold two out cross validation
+
+VI. F EATURE S ELECTION
+
+The use of all 24 features in the experimental data set is perfectly acceptable in
+
+Quartic Regression 1600 1400 1200 1000 Predicted force, mN Predictions Relationship, slope=0.9958, intercept=2.4924
+
+0.1 newtons with only 24 quartic features, corresponding to only one original PWM duty cycle fourier analysis.
+Error Convergence 0.03
+
+800 600 400 200 0 -200 -400 0 200 400 600 800 Actual force, mN 1000 1200
+
+0.025
+
+0.02
+
+0.015
+
+0.01
+
+0.005
+
+Fig. 7.
+
+Quartic regression
+0 0 20 40 60 80 number of features included (sorted in priority order) 100
+
+Initial results - Linear Regression 1600 1400 1200 1000 Predicted force, mN 800 600 400 200 0 -200 -400 0 200 Predictions Relationship, slope=0.84728, intercept=76.9473 400 600 800 Actual force, mN 1000 1200
+
+Fig. 9.
+
+Feature Selection Error Convergence
+
+VII. C ONCLUSION AND F UTURE W ORK
+
+Fig. 8.
+
+Linear regression
+
+the exploratory investigation of this project, but the long-term implementation of this technology would require real-time analysis. Reducing the total number of fourier analyses and vibration settings required before a reading could be produced would be desirable. Iterative forward search resulted in promising results (shown in Figure 9), with an average discrepancy of less than
+
+This method provides a promising approach to non-intrusive surface contact detection and force measurement with flexible blind catheter systems. As demonstrated, the vibration approach results in extremely low average error of around .007 N when computing contact force predictions with a quartic polynomial fit, which can be adapted into an operational system for experimental applications. Vibration motors and the required accelerometers are relatively bulky, but their ability to be fitted away from the contact surface could have a dramatic positive impact on future development in the lab. Contact detection was also very successful, with testing errors as low as 4 percent
+
+when operating with one third of the data set for training. Both the SVM and logistic regression approaches produced similar results. There is certainly room for improvement. A more in depth exploration of the data may take into account accelerations in other directions and other aspects of the data not in the frequency domain. As suggested earlier, feature selection techniques may provide insight for streamlining future data collection and analysis, as well.
+VIII. ACKNOWLEDGMENTS
+
+This project would not have been possible without the assistance of Michael Yip (Camarillo Lab, Stanford BioE) and Troy Adebar (CHARM Lab, Stanford ME); we would like to thank them for their help in defining the problem, creating the initial setup, and providing feedback. We are grateful as well for the guidance of Prof. Ng and the teaching staff.
+R EFERENCES
+[1] Rong-En Fan, Kai-Wei Chang, Cho-Jui Hsieh, Xiang-Rui Wang, and Chih-Jen Lin. LIBLINEAR: A library for large linear classification. Journal of Machine Learning Research, 9:1871­1874, 2008.
+

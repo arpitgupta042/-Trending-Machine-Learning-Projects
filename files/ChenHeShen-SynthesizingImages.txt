@@ -1,0 +1,188 @@
+CS229 · December 2013
+
+Synthesizing images with out-of-plane transformations using stereo images
+Ruitang Chen, Zhuodong He, Dai Shen
+Stanford University
+
+Abstract
+Using a pair of stereo cameras, we can acquire the depth information, and thus synthesize images with 3D transformations. However, the resulting images often look uncanny because of data noises. In this project, we attempt to repair the generated stereo images. One way to address this problem is via unsupervised feature learning that could be achieved using linear autoencoders, also known as Reconstruction Independent Component Analysis (RICA). This algorithm has been shown to outperform other algorithms by penalizing lack of diversity among features. We improve the algorithm by adding an extension layer, and compare its performance with another image inpainting technique based on fast marching method. Our research shows that the inpainting method holds good promise.
+
+I.
+
+Introduction
+
+n computer vision, the process of obtaining data has often been time-consuming and expensive. Moreover, research outcome often heavily depends on both the quality and quantity of the data used. Consequently, novel ways of data generation has become an increasingly hot research topic. However, generated data often contains corruptions, which is inevitable in the simulation of reality from data at hand. Many of the corruptions fall into the category of inpainting problem. Inpainting problems occur when pixel values are missing,or images contain undesirable noises which hinder the use of the these data in other applications. This project aims to address this issue through Denoising Autoencoder (DA) specifically in the context of stereo view transformations. One of the biggest motivations in choosing DA is that it employs deep learning that can capture complicated nonlinear structures hidden in the images. DA is a neural network that aims to reconstruct the original image from a noisy version of it through finding out the hidden structure in the image. In our case, the training data are obtained from two stereo cameras mounted on the top of a car. Images from the left camera are transformed and compared
+
+I
+
+to those of the right. Some pixel values will be lost due to data inaccuracies (loss of depth information or occlusion), which will produce noises. DA is the used to restore the lost pixels and reconstruct the original images. The specific DA algorithm we consider is Reconstruction Independent Component Analysis (RICA), which will be explained in detail in the next section. We also propose a nonlinear extension of RICA which improves the performance. In the end, we implement an inpainting Telea algorithm which outperforms RICA in the denoising process.
+
+II. I.
+
+Methods
+
+3D transformation
+
+The data set is obtained from Kitti[3]. Images are taken from cameras mounted on two extreme sides of a car. Images are rectified in advance. Depth maps are generated using Semi-Global Block Matching (SGBM) algorithm[4] which uses pixel-wise cost calculation. Disparity is the difference between intensity of two pixels at the same location of two images and is inversely proportional to depth, which is derived by the formula: 1
+
+CS229 · December 2013
+
+depth = T  f /disparity( x, y),
+
+(1)
+
+these black holes of images. We then propose three methods, RICA, deep RICA and inpainting.
+
+where T is the distance of two cameras, and f is focal length of camera. Hence we are able to get the real world depth data and map the pixel on the image to 3D location according to the formula:      x f x 0 Cu X/Z  y  =  0 f y Cv   Y/Z  , (2) 1 0 0 1 1 where f x , f y are focal lengths, Cu ,Cv are coordinates of the principal point of the camera, and ( X, Y, Z ) is the real-world coordinate.
+
+II.
+
+RICA
+
+Figure 1: A disparity map.
+
+New image at a different angle can be obtained through imposing the following rotation matrix such as the one along z-axis,   cos  - sin  0  sin  (3) cos  0 . 0 0 1 In the original real world coordinate. We can make line transformation, and use the same method to project real world image data to 2D plane.
+
+Model In this section, we introduce the basic models of RICA which serve as the foundation in our denoising method. Compared to traditional autoencoder, RICA is able to train data with overcomplete features (number of features » dimentionality of data) and is insensitive to whitening (a preprosessing step that decorrelate the data). Therefore, this algorithm has been shown to outpeform many other autoencoder algorithms. Suppose we have unlabeled training example set { x (1) , x (2) ...}, in our case are vectors transformed by corrupted-image matrix, {y(1) , y(2) ...} are the original right image. We modified the problem to be training { x (1) , x (2) ...} to find an encoding matrix W T W to restore x (i) to y(i) . Hence, RICA produce the following unconstrained optimization problem:  m
+
+min[
+W
+
+i =1
+
+
+
+m
+
+W T Wx (i) - y(i)
+
+2 2+
+
+i =1 j =1
+
+  g(Wj x(i) )],
+
+m
+
+n
+
+where g is a nonlinear convex function, in our case is the sparsity cost. g(Wj x (i) ) =   ( + Wj x (i) ))( 2 ) W  Rk×n is the weight matrix, where k is number of features. W is the encoding matrix, hence the encoding step is Wxi . The activation function of RICA is proposed to be a linear function of {Wx (i) }. Next we are going to propose a deep version of RICA, which use an extra layer of f ({Wx (i) }) For convenience, we define that
+1
+
+Figure 2: a left image that has been transformed to match that of the right. Many pixels lost their values during the trasnformation.
+
+H (W ) =
+
+However, in this process some pixel values will lose due to inaccurate calculation of depth information. Hence we are trying to repair 2
+
+i =1
+
+
+
+m
+
+W T Wx (i) - y(i)
+
+2 2,
+
+G (W ) =
+
+i =1 j =1
+
+  g(Wj x(i) ),
+
+m
+
+n
+
+CS229 · December 2013
+
+J (W ) = Process of RICA
+
+ H (W ) + G (W ) . m
+
+study, we chose  to be 0.05. Effect of number of hidden units (features): A low number of hidden units make poor predictions. Whereas high number of hidden units may lead to overfitting. We run our algorithm at k = 400.
+
+1. Initialize parameters (, , number of hidden units). 2. Use backpropagation algorithm to calculate { a(2) , a(3) , (1) , 2 , (3) }. a(l ) to denote the activation of layer l 3. Calculate
+W H (W ) , W G (W ) , W J (W ) .
+
+IV.
+
+Inpainting
+
+4. Use the unconstrained optimizer L-BFGS to find W  = argmin J (W ).
+W
+
+5. encode corrupted image by imposing Wx (i) . 6. Calculate squared error Wx (i) - y(i) to validate accuracy.
+2 2
+
+Here we employ telea algorithm for inpainting. To inpaint a region , we select a boundary point p and take a small neighborhood B ( p) of size of the known image around p . The inpainting of p should be determined by the values of the known image points close to p, i.e., in B ( p). For small enough, we consider a first order approximation Iq ( p) of the image in point p, given the image I (q) and gradient I (q) values of point q. The inpainting method is described by: Iq ( p) = I (q) + q B I (q)( p - q) (4)
+
+Data processing Using Kitti dataset, we are able to obtain a disparity map for each set of images. Then we artificially generate right image based on the camera calibration data we get. Due to limit of computer memory space, W cannot be high dimension. We divide the picture into 32 pixel × 32 pixel patches as training sets. Then we reshape image matrix into vector { x (1) , x (2) ...}, the object vectors {y(1) , y(2) ...} are original right images obtained from Kitti data set. In this project, we run RICA on 25 pictures of 300 patches.
+
+I ( p) =
+
+( p)
+
+ ( p, q)[ I (q) + q B
+
+I (q)( p - q)]
+
+( p)  ( p, q )
+
+III.
+
+Deep RICA
+
+Due to the linearity of RICA, data underfitting may occur. In this sense, we propose to add an additional hidden layer to the neural network. For inputs x (i) , We preprocess it and calculate the new input as sigmoid(Ux (i) ). And we also use backpropagation on the additional layer. We train the data on the same data set as RICA. Effect of parameter :  plays an important in the calculation of cost. Very small values of  provide inadequate weight to the error term of H (W ). For our
+
+(5) The above equation explains how to inpaint a point on the boundary of the to-be-inpainted region as a function of known image pixels. To inpaint the whole , we iteratively apply Equation(4) to all the discrete pixels of  and advance the boundary inside  until the whole region has been painted. Inpainting points in increasing distance order from  ensures that images closest to known image are filled in first, thus mimicking manual inpainting techniques. To implement this, we use a fast matching method which solves Eikonal equation: T = 1 on , with T = 0 on . The soluion T is the distance map of  pixels to the boundary. Data processing In the noisy images we synthesized, we define the to-be-inpainted region,i.e. the mask as all black pixels. and then we train each image with telea algorithm. 3
+
+CS229 · December 2013
+
+III.
+
+Results
+
+Table 1: mean squared error of repaired images
+
+The following are some of the images after rotation transformations. They show that more than 45 degree transformation would be accompanied by too many distortions and occlusion effects to be of practical usage. Here a is the image rotated upwards by 10 repaired by telea, b is the image rotated downwards by 10 repaired by telea, c is the image rotated to the right by 30 repaired by telea, d is the image rotated to the right by 60 repaired by telea, e is the image repaired by linear RICA, f is the image repaired by nonlinear RICA. Images repaired by deep RICA has smaller square error than linear RICA. We are able to generate rather clear image by Telea till 30 . Image rotated 60 is comparatively distorted.
+
+Mean-squared error of Methods (1e3) Telea 2.2 RICA 2.4 deep-RICA 2.4
+
+IV. I.
+
+Discussion
+
+Advantages and Limitations
+
+We validate the error rate of repaired images by calculating its mean square error by formula  x (i) - y(i)
+i =1 m 2 2
+
+comparing to the orig-
+
+inal images. 4
+
+One of the limitations of RICA is that it relies common inner structures of corrupted pictures. However, in our dataset, noises tend to center in certain areas (e.g. the sky) where disparity information is inaccurate due to far distance. Noises of this kind more often than not bear few similarities, if any at all. In fact, RICA works most effectively on Gaussian noises, which is not a very accurate model of the reality. Deep RICA is a better model with a lower mean squared error than the linear RICA. However, the added complexity leads to a longer run time, especially for large data sets. In our data set, training time is still acceptable. Telea algorithm generates repaired images with the lowest mean squared errors. Instead of finding common features in images, this method is based on local optimization. Since an inpainting mask tells the algorithm which pixels correspond to the noises, this method only works in the predefined region. It is also more costeffective in terms of implementation. Inpainting does not need other image information to train the data sets. It simply repairs the image based on the image itself. However, in some cases where noise is undefined, inpainting is impossible. Also, inpainting distance is a parameter that changes with respect to different image conditions. For large data set, this is also impossible to tune. By comparison, RICA, which requires no predefinition of corrupted pixels, has broader applications. However, in synthesizing 2D images with out-of-plane transformations, Telea may be a better choice.
+
+CS229 · December 2013
+
+V.
+
+Conclusion
+
+et. al. [2] An image inpainting technique based on the fast marching method. Alexandru.T. [3] The KITTI Vision Benchmark Suite http://www.cvlibs.net/datasets/ kitti/eval_stereo_flow.php? benchmark=stereo [4] Semi-Global Block-Matching Algorithm http://zone.ni.com/reference/ en-XX/help/372916M-01/ nivisionconceptsdita/ guid-53310181-e4af-4093-bba1-f80b8c5da2f4/ [5] Image Denoising and Inpainting with Deep Neural Networks http://hebb.mit.edu/courses/9.641/ lectures/Xie%20Xu%20Chen%20image% 20denoising%20inpainting%20deep% 20neural%20networks%2012.pdf
+
+Through 3D transformation and image restoration process, we are able to generate images of different orientations and locations. In so doing, We can acquire data much faster and more efficiently. For future work, we would also like to extrapolate images beyond camera positions, which would be more difficult than our current interpolated images.
+
+VI.
+
+Acknowledgement
+
+We would like to thank Mr.Tao Wang, a phD student at Stanford CS department, for helping us with the project.
+
+References
+[1] ICA with Reconstruction cost for efficient overcomplete feature learning. Andrew Y.N.
+
+5
+

@@ -1,0 +1,78 @@
+Human Mobility Pattern Prediction Algorithm using Mobile Device Location and Time Data
+Myungjun Choi, Yonghyun Ro, Han Lee
+
+0.  Notations N = number of states in the model T = length of observation sequence ( number of state transitions per day ) xt = the state in which the user is at time t yt = the observation symbol observed at instant t i = P( xo = i ) , the probability of being in state i at the beginning of the each sequence Q  =  {  qij  },  where  qij  =  P(  xt+1  =  j  |  xt  = i ), the transition  matrix, the probability of being in state j at time t+1 given that user was in state i at time t P( yt | xt = j ) , emission probability of observation given that user is in state j µi = the mean vector of each state  = the covariance matrix of each state   = ( Q, µi, , i ), our Hidden Markov Model 1. Motivation and Goal
+Advent  of  smartphones  enabled  us  to  use  GPS   information  for  personal  use.  In  addition,  law enforcement  are  utilizing  nextgeneration  technology,  and  applications  monitor  known  targets and  identify  suspects  to  predict  their  behavior  and  prevent  attacks  before  they  take  place.  In order  to  implement  these  applications,  it  is  necessary  to  track  the  movements of mobile user in realtime  or  over  a  defined  time  period  among  mass  location.  Mobile  user's  mobility  pattern is a Hidden   Markov  Model(HMM),   because  we  do  not  get  to  observe  the   actual  sequence  of states(the  location  state),  we  can  only  observe  the  measurements(location  coordinate  data) generated  by  each  state.  Hence,  we  designed  the  algorithm  to  predict  mobile  user  mobility pattern  using machine  learning  algorithm and HMM. We relaxed data and our goal was to predict the best estimate of state sequence.
+
+2. Model Description 2.1 Introduction of Model
+Mobile  user's  mobility  pattern  is a  Hidden  Markov  Model,  because  we  do  not  get  to  observe  the actual  sequence  of  states  (  the  location  state  ),  we  can  only  observe  the  measurements  ( location  coordinate  data  )  generated  by  each  state. Specifically,  if  we  projected  an  uniform  grid onto  the  region  of  interest  like  Figure  1A  and  each  grid  stands  for  each  state,  every  single different  colored  points  tell  us  the  coordinate  of  position  of  mobile  device  through  GPS  or  any other  navigation  aids,  but  in  this  region  the  values  of   the  states  are  unobserved  when  we observed  location  measurement.  That  is,  we  do  not  know  which  grid  contains  the  specific measurement before we label it. 1
+
+Figure 1. A. An example of human mobility pattern. Plot shows a sequence of location measured at
+different times, t, from 1 to 5. Measurements at each time follow Gaussian distribution. B. An example of 4 states, measured at 4 different time points represented by different colors. X, Y coordinates are shown on x, yaxis. Each state could represent locations of home, work, library, shopping, etc.
+
+Hence,  if  we  measure 2  dimensional  position  data  at  every  hour  of a day for considerable days. we  can  have  a  series  of  observed  measurements  which  follows  Markov  property  without state assignment.
+
+2.2 Model parameters for Hidden Markov Model
+If  we   are  given  the  data  set,  we  have  to  specify  which   parameters  we  have  to  find  based  on Hidden  Markov  Model.  As  we  mentioned  earlier,  human  mobility  pattern  follows Markov  property which the next state depends only on the current state and the equation is given below : P( xt+1| x0 ,x1 ,x2 ,...xt ) = P( xt+1| xt )  where xt is the state at time t Since  our  purpose  is  to  build  the  maximum  likelihood  mobility  pattern  parameter  model in  order to  find  the  optimal state sequence and  the probability of an observed sequence, we have  to learn values  for  the  Hidden Markov Model's parameters and apply that to the probability of an observed sequence. From figure 2, we can represent Hidden Markov Model parameters given as :    P (x0, x1, ..., xT ) = P (x0)  P (xt|xt-1)P (yt|xt)
+t=1 T
+
+where   yt is the measurement at time t P (x0, x1, ..., xT ) is probability of series of state P (x0) is initial state probability P (xt|xt-1) is state transition probability P (yt|xt) is emission probability (measurement probability distribution at given state)
+
+2
+
+Figure 2
+Especially,  state  transition  probability  can  be  extended  to  the  state  transition  probability  matrix given as figure 3 :
+
+Figure 3
+Hence,   we  will   learn  the  above  parameters  which  are   state  transition  probability  matrix,  initial probability  and  emission  probability  from  the  given  data  set  and  construct  a  human  mobility pattern model.
+
+2.3 Model Assumption
+ i) Mobility pattern is a continuous output Hidden Markov Model  ii) Human mobility pattern is not stationary so that we assume there are 3 different transition    matrices and initial state probabilities with respect to time (see 3. Training Data Set Relaxation) iii) The measurements drawn from each state is the Gaussian Distribution iv) Time step is 1hr and measurements at same time of different day is time synchronized v) The measurements are not a mixture Gaussian Model
+
+2.4  Challenges
+Practically,  we  have  to  collect  measurement  data set that corresponds exactly to our model and learn parameters and apply parameters to maximize optimal state sequence probability. There is a  publicly  released  real  measurement  data  set  from  Microsoft,  the  data  set  is  stored  in  a relational  database  and  we  processed  to   extract   data  from  db  file  using  mkSQLite  which  is MATLAB  based  SQL  query, but  after  looking  up  the  data,  we  cannot  use  the data set in its form directly  because  not  every  movement  recorded  on  each  day  occurred at exactly the same time. For  example,  the  time that a person's GPS location gets recorded  can occur at 8:00 on one day, and  at  8:01  on  another  day,  and  so  on.  Therefore, we have to relax and modify the training  data set to be able to use this data set with our model.
+
+3
+
+3. Training and Test Data Set Relaxation
+Human's  mobility  pattern  is  not  stationary,  but  time  dependent.  Specifically,  people  are  usually stationary  at   home  during  sleeping  time  until  they  are   heading  for  workplace.  During  day  time, people  are  usually  staying  in their  workplace. Sometimes, they go out for lunch or shopping, and they  go  to  gym  after  work.  Based  on  3  divisions  of  human activity pattern, Hence, we split into 3 blocks  of  sequences specifically,  based  on  general  human  activity,  we divide 24 hours into 8am to  1pm  with  length  of  6  ,  2pm  to  7pm  with  length  of  6,  8pm  to  7am with  length  of 12  (Figure 4). We   used  a  training  data  set  that  is  publicly  released  by  Microsoft.  However,  each  geographic data  in  the  data  set  had  a  very  granular  time  distribution  in  the  unit  of seconds. For the purpose of   simplicity  to  be  used  in  our  model,  we performed  data  set  relaxation  to  an  hour  interval  from the  seconds.  Hence,  the  movement  of  one  user  in  a  single  hour  will  be  funneled  down  into  a single  point.  Total  number  of each  block's  sequence  can  be  varied  by the  user.  Therefore,  we defined  three  different transition  matrices  Q  with  respect  to  time  division.  We  have  defined  total of  four  states  in  this  data set. From this data set we can compute three different initial probability i  as  well.  Lastly,  we  also  have  to  obtain  mean  of  each  state  and  corresponding  covariance matrix  because  the  measurement  is  two  dimensional,  so  multivariate Gaussian distribution. We call  this initial model   =  (  Q, µi, ,  i  ). After obtaining relaxed output measurements, we applied measurements  to  our  mobility  pattern  prediction  algorithm  and  adjusted  result  model  *  which maximize  the  probability  of  state  sequence  and  observation  sequence,  in  order  to  validate  that the algorithm is a good estimator of our reference model.
+
+· Length of each sequence per day are 6, 6, 12 · Total number of each sequence is 300 days · Total number of training set are 600,  600,  1200
+
+Figure 4
+Total data sequence is 300 days and 75% of data is training data set and 25% of data is test data set to validate the performance of the algorithm. While relaxing measurement data, we also 4
+
+figured out the state variable simultaneously, in order to compare how many state sequence variable is differ from the state sequence variable produced by viterbi algorithm later.
+
+4. Algorithm Implementation
+The  features  of  our  training  data  set  is  2  dimensional  position  coordinate  and  time.  From  this data  set,  we   estimate  all  parameters  we  need  for  maximizing  optimal  sequence probability  we want to know. Our algorithm starts from this point.
+
+4.1 Algorithm Procedure
+i) Given training data set, calculate the initial probabilities and transition probabilities     The  method  to  identify  the  hidden  state  of  each  measurements  is  using  Kmeans algorithm.         Kmeans algorithm clusters data points in order to make neighbor data points clustered          same state variable         The initial model(   ) parameter equations are given below :
+
+
+ii)  Now  we  shall  assume  that  an  initial Hidden Markov Model is known from step i)  and maximize        P (x0, x1, ..., xT   ) ,  P (y, y1, ..., yT   ) by  adjusting  the  parameters  of   = (Q,  i, ,  i) through EM(Expectation and Maximization) algorithm.      This EM phase uses dynamic programming which is forwardbackward procedure and the       BaumWelch reestimation formula [1], [2]      This maximization criterion is called maximum likelihood criterion and the function         P (y, y1, ..., yT   )  is called likelihood function.      Baumwelch reestimation Formula is given below :
+
+5
+
+6
+
+iii)  algorithm  iterates until log likelihood function will converges  to get optimal parameters * such  that  P (y, y1, ..., yT   *)   P (y, y1, ..., yT   ) iv)  With  the  optimal  parameters  of  model  *,  we  can  verify  that  *  is  the  best  estimate  of  the reference model we defined.       We applied the training data set and the test data set which are only location and time data        with optimal parameters to the viterbi algorithm which produces the best estimate state        sequence * v)  Evaluate  the  error  rate  of  by  comparing  the  state  variable   sequence  produced  by  viterbi algorithm and the state variable sequence of relaxed real measurement data.       We calculate training data set error and test data set error.
+
+7
+
+5. Result and Analysis
+Our  results  are  shown  below  in  the  Figure  6.  Figure  6A  shows  4  states  for  8am  to  1pm  state sequence  found  by  the  Kmeans  algorithm,  and  Figure  6B  shows the  error  rate  under  these  4 states.  Error   rates  are   well  below  1%,  which  indicates  that  less  than  5  out  of  450  sequence resulted  in  error  in  the  time slot  in 8am  to  1pm  and 2pm to 7pm,  and  approximately 9 out of 900 error in 8pm to 7am.
+
+Figure 6. A. Measurements and States of Data B. Error Rates. Top is the error rate for training data, and
+bottom table is the error rate for test data.
+
+8
+
+6.     Reference
+[1] A tutorial on hidden markov models, http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.27.3772&rep=rep1&type=pdf
+
+[2] Hidden Markov Model(HMM) Toolbox for Matlab written by Kevin Murphy http://www.cs.ubc.ca/~murphyk/Software/HMM/hmm.html
+
+9
+

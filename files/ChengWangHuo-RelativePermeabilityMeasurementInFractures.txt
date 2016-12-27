@@ -1,0 +1,70 @@
+Relative Permeability Measurement in Rock Fractures
+Siqi Cheng, Han Wang, Da Huo
+
+Abstract The petroleum industry always requires precise measurement of relative permeability. When it comes to the fractures, the measurement becomes extremely difficult since the saturation in the fractures is hard to calculate. In this study, we are aiming to provide a machine learning approach to distinguish voxel-based water and gas in rock fractures based on Computed Tomography. This research is divided into two parts: the first part is to extract fracture features from a set of noisy CT scanning data; the second part involves water and air classification. We use a machine learning assisted boosted depth first search. We use the assumption that fractures would be continuous or at least piecewise continuous to devise this algorithm. For our project, we seek to find f (N (x)) to {air, water, rock} which optimizes the mapping of the pixel to the correct class. Two-phase data will be used to test the machine learning results and to provide a distribution of water and gas in fractures. Finally, the fracture has been successfully extracted and the relative permeability curve for fractures have been obtained based on our experimental data. This could be a significant contribution to shale gas production, enhanced oil recovery and hydraulic fracturing activities. Index Terms: Rock Fractures, Relative Permeability, SVM
+
+1
+
+Introduction
+
+In multiphase flow in porous media, relative permeability of a phase is a dimensionless measure of the effective permeability of that phase and saturation means volume percentage of that phase. Previously, people use wave technology and resistivity technology to measure saturation. But most of them can only provide a rough estimate of the saturation of the whole fracture plane. In this paper, we are aiming to provide a machine learning approach to distinguish voxel-based water and gas in rock fractures based on Computed Tomography. The relative permeability will be obtained based on water/gas saturation. Due to the noisy nature of CT scanning (Fig .1), data must be properly processed to extract fractures and distinguish water and air in the fractures. In this paper, Section II describes the method of extracting fracture features using -SVM approach and presents the fracture location. Section III describes the collection of data sets, extraction of features from the data sets and the learning process by SVM. Section IV discusses the relative permeability obtained.
+
+2
+
+Fracture Detection with -SVM and Sub-model Results
+
+For the fracture extraction algorithm, we make the assumption that a fracture will appear in the CT data as a local line of low density. In order to preserve cache locality, we defined the local neighborhood, N , as the 5×5 voxel box surrounding the voxel we are attempting to classify. Since the fracture can occur in any orientation, we seek to find rotationally invariant features and created the set M, the sum of voxels along each cubic axis of symmetry (12 total), Fig. 2. After much trial and error, the final input features are (all normalized to N(0,1)): 1
+
+Figure 1: CT scanning of rock fractures. Left part shows a real fracture in rock samples. Right part shows its CT image. Fracture pattern becomes hard to distinguish from CT images.
+
+Figure 2: Rotational Invariance 1. N (3,3) 2. max(N ) - min(N ) 3.
+N (3,3)-min(N ) max(N )-min(N )
+
+4. min(M) 5. max(M) 6. max(M) - min(M) We chose -SVM with RBF kernel as our machine learner due to its small amount of tuning parameters. We fitted parameters via grid search and the final parameters chosen were  = 0.0033 and  = 0.55. As shown by Fig. 3, the trained -SVM was able to detect the central fracture plane and achieve 0.782 on the AUROC metric. The training and test sample accuracy came out to be 95.8% and 95.4%, respectively. We attribute the exceptional accuracy to the unbalanced nature of the dataset.
+
+2
+
+Figure 3: Left: 3D volumetric plot of areas estimated to be fractures, the cleaved center plane is clearly visible. Right: ROC curve of trained learner on out of sample test data. AUROC = 0.782
+
+Figure 4: Left: Feature choice for training data set. Right: Two circumstances illustrating air-filled fracture and water-filled fracture. For the right figure, the upper figure shows normal air/water distribution with rock. The lower one shows significant higher rock density around air-filled fractures.
+
+3
+
+Data Collection and Extraction for Water/Air Classification
+
+The data was collected based on rock images with pure water or pure air residing in the fracture. The only input data for a particular pixel is the CT value, and this alone is not enough. Due to the principle of CT image, we believe the values of the neighbors are also important and should be considered as the feature of the pixel we are treating. Different feature selections have been considered. The neighbor pixels perpendicular to the fracture appear more important than the pixels in the fracture. Thus, we consider six input values for a single pixel. Training data are set as shown in Fig. 4, with the fracture pixel as 1 and other pixels adjacent as 2-5. Max difference within a 3x3x3 box is considered as the sixth feature. This input features shows significantly better prediction and the absolute values. If water is residing in the fracture, the fracture pixel will be assigned as 1 and if nitrogen is residing, the pixel will be assigned as 0. So the function is 1 { pixel = water }. Due to the randomness of input features, we use the differences of the pixel with the pixels next to it. In Fig. 4, two circumstances of rock/air/water CT value have been plotted to show the reason why difference is more accurate than the absolute value. The rock density in adjacent voxels will significantly affect the CT number of air/water-filled fractures. The CT number for air-filled fracture may be higher than water-filled one, shown in lower figure in Fig. 4. The testing results shows that more training data will have a slightly better prediction. Due to the reason that higher pressure will cause fracture to be narrower, the resolution and neighbor picking will be affected by the pressure added on the rock sample. In Fig. 5 we find that best accuracy is achieved at 300 psi. If we use the machine trained under different pressure conditions, 3
+
+Figure 5: Prediction accuracy versus effective pressure the prediction still shows decent accuracy. SVM shows that the differences between fracture and vertical neighbors are crucial for water/air detection. If we only keep the max differences and the pixel values itself as input features, the machine will only have 53.23 % accuracy. This result is reasonable since it shows that due to CT scanning principles, vertical neighbors will influence the materials in the fracture more. Another knob is the neighbors we use, SVM gives almost the same prediction for 3x3x3, 5x5x5 and 7x7x7 boxes for maximum difference picking. This is due to coarse resolution and homogeneity in large rock voxels.
+
+Figure 6: Different kernel choices From all kernels in c-SVM, it turns out that RBF kernels show the best result. Besides, the cost is set to 100 which will results a 10% miss rate when testing on the training data itself. This is because when the cost is too low, SVM will choose more than two thirds of the input vectors as support vectors and this will results less than 1% of the miss rate on the training data itself. The machine is over-fitting in this case. This can also be proven by using -SVM. The result shows that the machine with the maximum support vector range from 0.1 to 0.3 gives a better prediction for the testing data.
+
+4
+
+Relative Permeability
+
+The relative permeability curve is developed using a series of data under different injection rates. Saturation value is obtained using machine learning approach and relative permeability data is from experimental results. In Fig. 7. We clearly find that water relative permeability increase and air relative permeability decrease with increasing water saturation. Air and water relative permeability curve cross each other at 85% water saturation. Due to the channelling behavior, saturation will keep constant at 89% while water and air relative permeability will keep on changing. This relative permeability curve is as expected with the literature. Physical meaning is confirmed with previous 4
+
+research. This relative permeability shows that irreducible water saturation is 83%, which means that no more water will be driven out of the core with even higher injection rate.
+
+Figure 7: Relative permeability curve developed using machine learning approach
+
+5
+
+Summary
+
+In conclusion, we have shown that -SVM is able to detect fractures in sandstone with the key incite of rotationally invariant features. The output fracture data was then sent to the second water/air discrimination model. The second model, utilizing a c-SVM, was able to identify water and air within the fracture for multiphase measurement. The final machine learner output was then post-processed to generate a relative permeability curve which is consistent with literature. For future work, we will work on extending the method onto natural fractures, and explore additional features which will improve the machine learning model's discernibility.
+
+6
+
+Acknowledgement
+
+The authors would like to acknowledge Prof. Andrew Ng and other teaching staffs for providing us such an enriched quarter.
+
+7
+
+References
+
+1. Ketcham, R.A., Carlson, W.D.(2001), Acquisition, optimization and interpretation of X-ray computed tomographic imagery: applications to the geosciences, Computers & Geosciences, 27, p381-400 2. Graf, A., Borer, S.(2001), Normalization in support vector machines, Pattern Recognition, p277282 3. Brennen, C. E.(2005), Fundamentals of Multiphase Flows, Cambridge University Press, ISBN 0521 848040 4. Johnson, E.F., Bossler, D.P., and Naumann, V.O.(1959), Calculation of Relative Permeability from Displacement Experiments, Petroleum Transactions, AIME, Vol. 216, p370-372 5. www.csie.ntu.edu.tw/cjlin/libsvm/
+
+5
+
